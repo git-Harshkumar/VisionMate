@@ -1,0 +1,246 @@
+/* CameraPreview Component Styles */
+.camera-preview-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0a0b14;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleX(-1); /* mirror for front camera UX */
+}
+
+.camera-idle-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-muted);
+}
+.camera-idle-placeholder .idle-icon {
+  font-size: 3.5rem;
+  opacity: 0.4;
+}
+.camera-idle-placeholder p {
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+/* Live indicator dot */
+.live-indicator {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-transform: uppercase;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-danger);
+  position: relative;
+}
+.live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--accent-danger);
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+/* Scanning shimmer overlay during processing */
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(108, 99, 255, 0.08) 50%,
+    transparent 100%
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.8s ease infinite;
+}
+
+/* ControlPanel Styles */
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.control-row .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* SpeechControls Styles */
+.speech-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.speech-banner {
+  padding: 14px 18px;
+  background: rgba(108, 99, 255, 0.08);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color var(--transition-base);
+}
+.speech-banner.active {
+  border-color: var(--accent-secondary);
+  background: rgba(0, 212, 170, 0.06);
+  color: var(--text-primary);
+}
+.speech-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+/* Detection overlay card */
+.detection-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.detection-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  animation: fade-up 0.3s ease forwards;
+  transition: border-color var(--transition-fast);
+}
+.detection-item:hover { border-color: var(--border-accent); }
+.detection-item.priority { border-color: rgba(255, 169, 64, 0.35); }
+
+.detection-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  text-transform: capitalize;
+  flex: 1;
+}
+.detection-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.confidence-bar-wrap {
+  width: 48px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.confidence-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* CameraStatus */
+.camera-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: background var(--transition-base);
+}
+.status-dot.active { background: var(--accent-secondary); }
+
+/* ErrorMessage */
+.error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255, 77, 109, 0.1);
+  border: 1px solid rgba(255, 77, 109, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  color: #ff7a94;
+  animation: fade-up 0.3s ease forwards;
+}
+.error-icon { flex-shrink: 0; font-size: 1rem; }
+
+/* LoadingState */
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+/* ReadTextButton */
+.read-text-btn {
+  position: relative;
+  width: 100%;
+  padding: 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #1a1b2e, #252641);
+  border: 2px solid rgba(76, 201, 240, 0.35);
+  color: var(--accent-info);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.read-text-btn:not(:disabled):hover {
+  border-color: var(--accent-info);
+  background: rgba(76, 201, 240, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(76, 201, 240, 0.20);
+}
+.read-text-btn:focus-visible { box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.45); }
+.read-text-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }

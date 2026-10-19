@@ -1,0 +1,72 @@
+/* VisionMate App Layout & Responsive Styles */
+/* File: frontend/src/App.css */
+
+.app-container {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.column-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Accessible Footer */
+.app-footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.footer-nav {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+}
+
+.footer-nav a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.footer-nav a:hover {
+  color: var(--accent-primary);
+}
+
+/* Touch targets for mobile */
+@media (max-width: 600px) {
+  .app-container {
+    padding: 16px 12px 32px;
+  }
+  .btn {
+    min-height: 48px;
+  }
+}
