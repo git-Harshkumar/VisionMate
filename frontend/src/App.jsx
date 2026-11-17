@@ -15,7 +15,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
 import "./styles/components.css";
-import "./styles/skeuomorphic.css";
+import "./styles/claymorphism.css";
 
 import { useCamera } from "./hooks/useCamera";
 import { useSpeech } from "./hooks/useSpeech";
