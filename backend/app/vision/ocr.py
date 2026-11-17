@@ -125,21 +125,23 @@ class OCRService:
 
         cues = []
         if (touch_left and touch_right) or (touch_top and touch_bottom):
-            return "Move item back 4 inches to fit the entire page in view."
+            return "Move camera back to fit the entire page in view."
         if touch_top:
-            cues.append("tilt camera up slightly")
+            cues.append("cut off at the top, tilt the camera up slightly")
         if touch_bottom:
-            cues.append("tilt camera down slightly")
+            cues.append("cut off at the bottom, tilt the camera down slightly")
         if touch_left:
-            cues.append("move item slightly right")
+            cues.append("cut off on the left edge, move the item slightly right")
         if touch_right:
-            cues.append("move item slightly left")
+            cues.append("cut off on the right edge, move the item slightly left")
+
+        # Edge cut-off cues matter more than size guidance — check them first.
+        if cues:
+            return f"To frame text properly, {', and '.join(cues)}."
 
         if total_span_x < 0.20 and total_span_y < 0.20:
             return "Bring the item closer to the camera."
 
-        if cues:
-            return f"To frame text properly, {', and '.join(cues)}."
         return "Item is well centered in camera view."
 
     def read_text(
