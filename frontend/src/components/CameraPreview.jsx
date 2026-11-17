@@ -7,6 +7,7 @@
  */
 
 import React, { useRef } from "react";
+import { Icon } from "./Icon";
 
 export function CameraPreview({
   videoRef,
@@ -19,6 +20,7 @@ export function CameraPreview({
   onStartCamera,
   onSwitchCamera,
   onSampleImageLoaded,
+  overlayActive = true,
 }) {
   const fileInputRef = useRef(null);
 
@@ -53,7 +55,7 @@ export function CameraPreview({
       />
 
       {/* Real-time Walking Corridor Path Overlay on Live Video (when streaming) */}
-      {isStreaming && !showAnnotated && (
+      {isStreaming && !showAnnotated && overlayActive && (
         <svg
           style={{
             position: "absolute",
@@ -118,7 +120,7 @@ export function CameraPreview({
       {!isStreaming && (!showAnnotated || !annotatedImage) && (
         <div className="camera-idle-placeholder" role="status">
           <div className="idle-icon" aria-hidden="true">
-            📷
+            <Icon name="camera" size={56} />
           </div>
           <div style={{ textAlign: "center", padding: "0 24px", maxWidth: "480px" }}>
             <h3 style={{ marginBottom: "8px" }}>Camera Inactive</h3>
@@ -166,7 +168,7 @@ export function CameraPreview({
                 onClick={() => onStartCamera && onStartCamera(selectedDeviceId)}
                 aria-label="Turn on camera stream"
               >
-                <span>▶ Start Camera</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="play" size={14} /> Start Camera</span>
               </button>
               <button
                 type="button"
@@ -174,7 +176,7 @@ export function CameraPreview({
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Upload a test image for inspection"
               >
-                <span>📁 Upload Image</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="folder" size={14} /> Upload Image</span>
               </button>
             </div>
           </div>
@@ -217,7 +219,7 @@ export function CameraPreview({
             >
               {devices.map((device, idx) => (
                 <option key={device.deviceId || idx} value={device.deviceId} style={{ background: "#1a1d2e", color: "#fff" }}>
-                  📷 {device.label || `Camera ${idx + 1}`}
+                  {device.label || `Camera ${idx + 1}`}
                 </option>
               ))}
             </select>
