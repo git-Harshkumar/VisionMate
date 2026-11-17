@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { Icon } from "./Icon";
 
 export function VoiceStatusPill({
   isListening,
@@ -69,7 +70,7 @@ export function VoiceStatusPill({
 
         {vlmLoading && (
           <span style={{ color: "#4cc9f0", fontStyle: "italic", marginLeft: "0.5rem" }}>
-            🧠 Consulting Multimodal AI...
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><Icon name="sparkles" size={13} /> Consulting Multimodal AI...</span>
           </span>
         )}
 
@@ -98,7 +99,7 @@ export function VoiceStatusPill({
 
         {permissionError && (
           <span style={{ color: "#f87171", fontSize: "0.85rem", fontWeight: 500 }}>
-            ⚠️ {permissionError}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><Icon name="alert-triangle" size={13} /> {permissionError}</span>
           </span>
         )}
       </div>
@@ -130,7 +131,7 @@ export function VoiceStatusPill({
               }}
               aria-label={`Stop searching for ${targetObject}`}
             >
-              ✕
+              <Icon name="x" size={13} />
             </button>
           </span>
         )}
@@ -147,7 +148,7 @@ export function VoiceStatusPill({
             }}
             role="alert"
           >
-            📐 {guidanceMessage}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><Icon name="scan" size={13} /> {guidanceMessage}</span>
           </span>
         )}
       </div>
