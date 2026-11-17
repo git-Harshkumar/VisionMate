@@ -80,6 +80,68 @@ class OCRService:
         joined = ". ".join(filtered)
         return f"Reading text: {joined}."
 
+    @staticmethod
+    def _calculate_framing_guidance(blocks: List[OCRBlock], width: int, height: int) -> Optional[str]:
+        """
+        Calculates framing cues if detected text blocks are cut off or touch the camera boundaries,
+        or guides orientation if text is too small/far.
+        """
+        if not blocks or width <= 0 or height <= 0:
+            return "No readable text detected. Hold the item 10 to 12 inches directly in front of the lens."
+
+        # Edge margins: within 6% of frame boundaries
+        margin_x = width * 0.06
+        margin_y = height * 0.06
+
+        touch_left = False
+        touch_right = False
+        touch_top = False
+        touch_bottom = False
+
+        min_x = width
+        max_x = 0
+        min_y = height
+        max_y = 0
+
+        for b in blocks:
+            for pt in b.box:
+                x, y = pt[0], pt[1]
+                min_x = min(min_x, x)
+                max_x = max(max_x, x)
+                min_y = min(min_y, y)
+                max_y = max(max_y, y)
+
+                if x <= margin_x:
+                    touch_left = True
+                if x >= width - margin_x:
+                    touch_right = True
+                if y <= margin_y:
+                    touch_top = True
+                if y >= height - margin_y:
+                    touch_bottom = True
+
+        total_span_x = (max_x - min_x) / float(width)
+        total_span_y = (max_y - min_y) / float(height)
+
+        cues = []
+        if (touch_left and touch_right) or (touch_top and touch_bottom):
+            return "Move item back 4 inches to fit the entire page in view."
+        if touch_top:
+            cues.append("tilt camera up slightly")
+        if touch_bottom:
+            cues.append("tilt camera down slightly")
+        if touch_left:
+            cues.append("move item slightly right")
+        if touch_right:
+            cues.append("move item slightly left")
+
+        if total_span_x < 0.20 and total_span_y < 0.20:
+            return "Bring the item closer to the camera."
+
+        if cues:
+            return f"To frame text properly, {', and '.join(cues)}."
+        return "Item is well centered in camera view."
+
     def read_text(
         self,
         image: np.ndarray,
@@ -95,12 +157,23 @@ class OCRService:
         """
         self._ensure_reader()
 
+        # Check if original image has text, or if horizontally flipped (mirrored webcam) gives better text
+        # Webcams (like Iriun/front cameras) frequently mirror the video stream!
+        h, w = image.shape[:2]
+        self._ensure_reader()
+
         # Convert BGR to RGB — EasyOCR expects RGB input
         rgb_image = image[:, :, ::-1]
 
         start = time.perf_counter()
         try:
             raw_results = self._reader.readtext(rgb_image, detail=1, paragraph=False)
+            # If no confident text found, try horizontally flipped image (fixes mirrored camera feeds)
+            if not raw_results or sum(len(r[1].strip()) for r in raw_results) < 3:
+                flipped_rgb = np.ascontiguousarray(rgb_image[:, ::-1, :])
+                flipped_results = self._reader.readtext(flipped_rgb, detail=1, paragraph=False)
+                if flipped_results and sum(len(r[1].strip()) for r in flipped_results) > sum(len(r[1].strip()) for r in raw_results):
+                    raw_results = flipped_results
         except Exception as e:
             return OCRResponse(
                 success=False,
@@ -134,12 +207,17 @@ class OCRService:
         # Build speech-optimized output using confidence threshold
         speech_text = self._build_speech_text(blocks, min_confidence=min_confidence)
 
+        # Calculate framing guidance to help visually impaired users position the camera
+        h, w = image.shape[:2]
+        framing_guidance = self._calculate_framing_guidance(blocks, width=w, height=h)
+
         return OCRResponse(
             success=True,
             inference_time_ms=inference_time_ms,
             total_blocks_count=len(blocks),
             total_text=total_text,
             speech_text=speech_text,
+            framing_guidance=framing_guidance,
             blocks=blocks,
             message=None if blocks else "No text detected in the provided frame."
         )

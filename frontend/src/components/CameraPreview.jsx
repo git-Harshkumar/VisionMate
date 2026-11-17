@@ -52,6 +52,54 @@ export function CameraPreview({
         aria-label="Live camera feed"
       />
 
+      {/* Real-time Walking Corridor Path Overlay on Live Video (when streaming) */}
+      {isStreaming && !showAnnotated && (
+        <svg
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+            zIndex: 2,
+          }}
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          {/* Walking Corridor Shaded Ground Area */}
+          <polygon
+            points="22,100 38,35 62,35 78,100"
+            fill="rgba(0, 220, 100, 0.12)"
+          />
+          {/* Left Path Boundary Line */}
+          <line
+            x1="22"
+            y1="100"
+            x2="38"
+            y2="35"
+            stroke="#00d4aa"
+            strokeWidth="1.2"
+            strokeDasharray="2 1"
+          />
+          {/* Right Path Boundary Line */}
+          <line
+            x1="78"
+            y1="100"
+            x2="62"
+            y2="35"
+            stroke="#00d4aa"
+            strokeWidth="1.2"
+            strokeDasharray="2 1"
+          />
+          {/* Distance depth markers */}
+          <line x1="28" y1="80" x2="72" y2="80" stroke="rgba(0, 212, 170, 0.6)" strokeWidth="0.8" />
+          <line x1="33" y1="60" x2="67" y2="60" stroke="rgba(0, 212, 170, 0.4)" strokeWidth="0.6" />
+          <line x1="37" y1="42" x2="63" y2="42" stroke="rgba(0, 212, 170, 0.3)" strokeWidth="0.5" />
+        </svg>
+      )}
+
       {/* Annotated Debug View (when enabled & available) */}
       {showAnnotated && annotatedImage && (
         <img

@@ -19,7 +19,9 @@ import "./styles/components.css";
 import { useCamera } from "./hooks/useCamera";
 import { useSpeech } from "./hooks/useSpeech";
 import { useSpatialAudio } from "./hooks/useSpatialAudio";
-import { fetchHealth, inspectFrame, readTextFromFrame } from "./services/visionmateApi";
+import { useOrientation } from "./hooks/useOrientation";
+import { useVoiceCommands } from "./hooks/useVoiceCommands";
+import { fetchHealth, inspectFrame, readTextFromFrame, askVLM } from "./services/visionmateApi";
 
 import { Header } from "./components/Header";
 import { CameraStatus } from "./components/CameraStatus";
@@ -31,6 +33,7 @@ import { ControlPanel } from "./components/ControlPanel";
 import { DetectionOverlay } from "./components/DetectionOverlay";
 import { ReadTextButton } from "./components/ReadTextButton";
 import { MetricsCard } from "./components/MetricsCard";
+import { VoiceStatusPill } from "./components/VoiceStatusPill";
 
 const THROTTLE_MS = 2500; // 2.5s interval — slower than 1.6s to prevent contradictory rapid-fire guidance
 
@@ -54,6 +57,7 @@ export default function App() {
     cancel: cancelSpeech,
     repeat: repeatSpeech,
     isSpeaking,
+    isSpeakingRef,
     lastText: lastSpokenText,
   } = useSpeech({ rate: 0.95, pitch: 1.0 });
 
@@ -61,6 +65,7 @@ export default function App() {
 
   // Navigation & Perception State
   const [navigationMode, setNavigationMode] = useState(true);
+  const [isReadingMode, setIsReadingMode] = useState(false); // Dedicated mode when holding item up to read
   const [isInspecting, setIsInspecting] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioMuted, setAudioMuted] = useState(false);
@@ -78,6 +83,13 @@ export default function App() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
 
+  // Tier 2 Multimodal VLM State & Voice
+  const [vlmLoading, setVlmLoading] = useState(false);
+  const [voiceFeedback, setVoiceFeedback] = useState("");
+  const [targetObject, setTargetObject] = useState(null);
+  const targetObjectRef = useRef(null);
+  targetObjectRef.current = targetObject;
+
   // Sample static image fallback (when no physical webcam is present)
   const [sampleImage, setSampleImage] = useState(null);
 
@@ -91,8 +103,12 @@ export default function App() {
   const navigationModeRef = useRef(navigationMode);
   navigationModeRef.current = navigationMode;
 
+  const isReadingModeRef = useRef(isReadingMode);
+  isReadingModeRef.current = isReadingMode;
+
   const lastNavActionRef = useRef(null);
   const lastNavSpeechTimeRef = useRef(0);
+  const stopSpokenCountRef = useRef(0); // Track how many times stop/hazard was announced for current obstacle
 
   // Navigation temporal smoothing: ring buffer of last N actions to require consistency
   // before speaking. Prevents "move forward" → "stop" flip-flop between frames.
@@ -153,8 +169,24 @@ export default function App() {
           setAnnotatedImage(response.annotated_image || response.annotated_image_base64);
         }
 
-        // Voice & Spatial Audio Guidance Logic
-        if (!audioMutedRef.current) {
+        // Targeted Item Search Mode Check
+        const detectedList = response.detections || response.prioritized_detections || response.detected_objects;
+        if (targetObjectRef.current && detectedList) {
+          const target = targetObjectRef.current.toLowerCase();
+          const match = detectedList.find((obj) =>
+            obj.label.toLowerCase().includes(target)
+          );
+          if (match) {
+            playDirectionalChime("clear");
+            if (!audioMutedRef.current) {
+              const pos = match.position || match.spatial_position || "in front";
+              speak(`Found ${match.label} ${pos}.`);
+            }
+          }
+        }
+
+        // Voice & Spatial Audio Guidance Logic (Suppressed while in Reading Mode!)
+        if (!audioMutedRef.current && !isReadingModeRef.current) {
           if (navigationModeRef.current && response.navigation) {
             const nav = response.navigation;
             const now = Date.now();
@@ -167,33 +199,64 @@ export default function App() {
             // Count how many of the last N frames agree on this action
             const actionCount = history.filter((a) => a === nav.action).length;
             const isConsistent = actionCount >= NAV_CONSISTENCY_THRESHOLD;
-
             const actionChanged = nav.action !== lastNavActionRef.current;
-            const cooldownPassed = now - lastNavSpeechTimeRef.current > NAV_SPEECH_COOLDOWN_MS;
             const isUrgent = !!nav.urgent_hazard;
+            const isStraightWalk = nav.action === "straight" || nav.action === "clear";
+            const isStopped = nav.action === "stop";
+            const periodicGap = isStraightWalk ? 20000 : NAV_SPEECH_COOLDOWN_MS;
+            const cooldownPassed = now - lastNavSpeechTimeRef.current > periodicGap;
 
-            // Speak only if: (a) action is temporally stable AND (changed OR cooldown expired),
-            // OR (b) genuine urgent hazard (bypasses consistency but still needs cooldown unless truly urgent)
-            const shouldSpeak =
-              (isConsistent && (actionChanged || cooldownPassed)) ||
-              (isUrgent && (now - lastNavSpeechTimeRef.current > 3000));
+            // Reset stop count whenever action changes away from stop
+            if (actionChanged && !isStopped) {
+              stopSpokenCountRef.current = 0;
+            }
+
+            // Policy:
+            // 1. If action changed, speak immediately.
+            // 2. If 'stop', ONLY announce up to 2 times total for the same obstacle!
+            //    Do NOT keep repeating in an endless loop while the user stands still.
+            let shouldSpeak = false;
+
+            if (actionChanged && isConsistent) {
+              shouldSpeak = true;
+            } else if (isStopped) {
+              // Only repeat warning a second time if at least 7 seconds passed and count < 2
+              if (stopSpokenCountRef.current < 2 && (now - lastNavSpeechTimeRef.current > 7000)) {
+                shouldSpeak = true;
+              }
+            } else if (cooldownPassed && isConsistent && !isStraightWalk) {
+              shouldSpeak = true;
+            }
 
             if (shouldSpeak) {
               playDirectionalChime(nav.action);
 
-              // Build a full spoken message: short guidance + numbered next steps
-              // This ensures the blind user hears every actionable instruction, not just the one-liner.
-              let fullSpeech = nav.guidance_speech || "";
-              const steps = nav.next_steps;
-              if (steps && steps.length > 0) {
-                const stepOrdinals = ["First", "Second", "Third", "Fourth", "Fifth"];
-                const stepText = steps
-                  .map((s, i) => `${stepOrdinals[i] || `Step ${i + 1}`}, ${s}`)
-                  .join(". ");
-                fullSpeech = `${fullSpeech} Here is what to do: ${stepText}.`;
+              let spokenGuidance = nav.guidance_speech || "";
+
+              if (isStopped) {
+                stopSpokenCountRef.current += 1;
+
+                const leftScore = nav.corridors?.left?.clearance_score || 0;
+                const rightScore = nav.corridors?.right?.clearance_score || 0;
+
+                let nextMove = "";
+                if (rightScore > leftScore && rightScore > 0.35) {
+                  nextMove = "Turn to your right to find an open path.";
+                } else if (leftScore > 0.35) {
+                  nextMove = "Turn to your left to find an open path.";
+                } else {
+                  nextMove = "Take two steps back, then turn slowly to locate a clear exit.";
+                }
+
+                if (stopSpokenCountRef.current === 1) {
+                  spokenGuidance = `${spokenGuidance} Next: ${nextMove}`;
+                } else {
+                  // Second reminder is very short and directly tells them the action
+                  spokenGuidance = `Still blocked. ${nextMove}`;
+                }
               }
 
-              speak(fullSpeech);
+              speak(spokenGuidance);
               lastNavActionRef.current = nav.action;
               lastNavSpeechTimeRef.current = now;
             }
@@ -233,7 +296,22 @@ export default function App() {
   }, [captureFrame, sampleImage, processFrame]);
 
   /**
-   * On-Demand OCR Trigger
+   * Dedicated Reading & Item Orientation Mode Toggle
+   */
+  const handleToggleReadingMode = useCallback(async () => {
+    setIsReadingMode((prev) => {
+      const next = !prev;
+      if (next) {
+        speak("Entering reading mode. Obstacle warnings paused. Hold the item in front of the lens. Checking orientation.");
+      } else {
+        speak("Exiting reading mode. Resuming navigation obstacle detection.");
+      }
+      return next;
+    });
+  }, [speak]);
+
+  /**
+   * On-Demand OCR & AI Item Assistant Trigger
    */
   const handleTriggerOcr = useCallback(async () => {
     const frame = captureFrame() || sampleImage;
@@ -246,11 +324,36 @@ export default function App() {
     setErrorMessage(null);
 
     try {
-      const result = await readTextFromFrame(frame);
-      setOcrResult(result);
+      // Direct call to Gemini Multimodal AI for 100% reading accuracy & item explanation
+      const vlmPromise = askVLM(
+        frame,
+        "Read all text visible on this item accurately and describe what this object is and what it is all about. If text is mirrored or reversed by the webcam, read it correctly. If any text is cut off, give brief framing advice."
+      );
 
-      if (!audioMutedRef.current && (result.speech_text || result.spoken_summary)) {
-        speak(result.speech_text || result.spoken_summary);
+      // Run local OCR in parallel as fast fallback
+      const ocrPromise = readTextFromFrame(frame).catch(() => null);
+
+      const [vlmRes, ocrRes] = await Promise.all([vlmPromise, ocrPromise]);
+
+      if (ocrRes) {
+        setOcrResult(ocrRes);
+      }
+
+      let textToSpeak = "";
+
+      if (vlmRes && vlmRes.spoken_response && !vlmRes.spoken_response.includes("GEMINI_API_KEY")) {
+        textToSpeak = vlmRes.spoken_response;
+      } else if (ocrRes && (ocrRes.speech_text || ocrRes.total_text)) {
+        textToSpeak = ocrRes.speech_text || ocrRes.total_text;
+        if (ocrRes.framing_guidance) {
+          textToSpeak = `${textToSpeak} ${ocrRes.framing_guidance}`;
+        }
+      } else {
+        textToSpeak = "No clear text found. Please hold the item about 10 inches directly in front of the camera lens.";
+      }
+
+      if (!audioMutedRef.current && textToSpeak) {
+        speak(textToSpeak);
       }
     } catch (err) {
       console.error("OCR request failed:", err);
@@ -259,6 +362,78 @@ export default function App() {
       setOcrLoading(false);
     }
   }, [captureFrame, sampleImage, speak]);
+
+  /**
+   * Tier 2 Multimodal VLM Conversational Query Trigger
+   */
+  const handleAskVLM = useCallback(
+    async (prompt = "Describe this scene concisely for a blind person navigating.") => {
+      const frame = captureFrame() || sampleImage;
+      if (!frame) {
+        setErrorMessage("Please enable the camera or load an image to analyze.");
+        return;
+      }
+
+      setVlmLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const result = await askVLM(frame, prompt);
+        if (result && result.spoken_response) {
+          if (!audioMutedRef.current) {
+            speak(result.spoken_response);
+          }
+        }
+      } catch (err) {
+        console.error("VLM query failed:", err);
+        setErrorMessage(`AI query failed: ${err.message}`);
+      } finally {
+        setVlmLoading(false);
+      }
+    },
+    [captureFrame, sampleImage, speak]
+  );
+
+  /**
+   * Camera Orientation Guidance Hook
+   */
+  const { guidanceMessage: orientationGuidance } = useOrientation({
+    isEnabled: isStreaming,
+    onOrientationIssue: (issue) => {
+      if (!audioMutedRef.current) {
+        speak(issue);
+      }
+    },
+  });
+
+  /**
+   * Hands-Free Voice Commands Hook
+   */
+  const {
+    isListening: isVoiceListening,
+    transcript: voiceTranscript,
+    permissionError: voicePermissionError,
+    restartVoice,
+  } = useVoiceCommands({
+    isEnabled: true,
+    onFeedback: (fb) => setVoiceFeedback(fb),
+    onStopAudio: () => {
+      cancelSpeech();
+    },
+    onRepeat: () => {
+      repeatSpeech();
+    },
+    onReadText: () => {
+      handleTriggerOcr();
+    },
+    onSceneDescription: (userQuery) => {
+      handleAskVLM(userQuery || "Describe this scene concisely for a blind person navigating.");
+    },
+    onTargetSearch: (item) => {
+      setTargetObject(item);
+      speak(`Searching for ${item}. Move your camera around slowly.`);
+    },
+  });
 
   /**
    * Continuous Acquisition Loop
@@ -315,6 +490,9 @@ export default function App() {
       } else if (e.key === "m" || e.key === "M") {
         e.preventDefault();
         setAudioMuted((prev) => !prev);
+      } else if (e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        handleToggleReadingMode();
       }
     };
 
@@ -328,7 +506,7 @@ export default function App() {
       <Header apiHealth={apiHealth} />
 
       {/* Live System Health & Telemetry Bar */}
-      <div style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: "12px" }}>
         <CameraStatus
           apiHealth={apiHealth}
           isStreaming={isStreaming}
@@ -338,6 +516,19 @@ export default function App() {
           navigationMode={navigationMode}
         />
       </div>
+
+      {/* Voice Assistant & Camera Orientation Guidance Status Bar */}
+      <VoiceStatusPill
+        isListening={isVoiceListening}
+        lastVoiceFeedback={voiceFeedback}
+        transcript={voiceTranscript}
+        permissionError={voicePermissionError}
+        onRestartVoice={restartVoice}
+        guidanceMessage={orientationGuidance}
+        targetObject={targetObject}
+        onClearTarget={() => setTargetObject(null)}
+        vlmLoading={vlmLoading}
+      />
 
       {/* Accessible Error / Alert Banner */}
       {errorMessage && (
@@ -398,6 +589,32 @@ export default function App() {
             onToggleAnnotated={() => setShowAnnotated((prev) => !prev)}
             onToggleNavigationMode={() => setNavigationMode((prev) => !prev)}
           />
+
+          {/* Dedicated Read & Examine Item Mode Button */}
+          <button
+            onClick={handleToggleReadingMode}
+            style={{
+              backgroundColor: isReadingMode ? "#ff9800" : "#20233b",
+              color: isReadingMode ? "#000" : "#ffb74d",
+              border: "2px solid #ff9800",
+              borderRadius: "8px",
+              padding: "0.85rem 1rem",
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: "1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.6rem",
+              width: "100%",
+              marginTop: "12px",
+              boxShadow: isReadingMode ? "0 0 15px rgba(255, 152, 0, 0.4)" : "none",
+            }}
+            aria-pressed={isReadingMode}
+            aria-label="Toggle Reading and Item Examination Mode"
+          >
+            {isReadingMode ? "📖 Reading Mode ACTIVE (Obstacles Paused)" : "📖 Switch to Reading & Item Mode"}
+          </button>
         </div>
 
         {/* Right Column: Safe Path Guide, OCR, Prioritized Detections & Metrics */}
@@ -416,6 +633,31 @@ export default function App() {
             onTriggerOcr={handleTriggerOcr}
             onSpeakText={(text) => speak(text)}
           />
+
+          {/* Tier 2 Multimodal AI Scene Inquirer */}
+          <button
+            onClick={() => handleAskVLM()}
+            disabled={vlmLoading || (!isStreaming && !sampleImage)}
+            style={{
+              backgroundColor: "#20233b",
+              color: "#4cc9f0",
+              border: "1px solid #4cc9f0",
+              borderRadius: "8px",
+              padding: "0.75rem 1rem",
+              cursor: vlmLoading ? "not-allowed" : "pointer",
+              fontWeight: 600,
+              fontSize: "0.95rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              width: "100%",
+            }}
+            title="Ask AI to describe the entire scene (VLM Tier 2)"
+            aria-label="Describe scene with AI"
+          >
+            🧠 {vlmLoading ? "Consulting AI..." : "Ask AI: What's In Front Of Me?"}
+          </button>
 
           {/* Prioritized Detections List */}
           <DetectionOverlay

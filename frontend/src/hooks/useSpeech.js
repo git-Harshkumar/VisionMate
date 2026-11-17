@@ -14,11 +14,12 @@ import { useRef, useState, useCallback, useEffect } from "react";
 
 export function useSpeech({ rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) {
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const isSpeakingRef = useRef(false);
   const lastTextRef = useRef("");
   const synthRef = useRef(window.speechSynthesis);
 
   const speak = useCallback(
-    (text) => {
+    (text, { onEnd, priority = false } = {}) => {
       if (!text || !text.trim()) return;
       const synth = synthRef.current;
 
@@ -31,9 +32,22 @@ export function useSpeech({ rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) {
       utterance.volume = volume;
       utterance.lang = "en-US";
 
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        isSpeakingRef.current = true;
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        if (onEnd) onEnd();
+      };
+
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        if (onEnd) onEnd();
+      };
 
       lastTextRef.current = text;
       synth.speak(utterance);
@@ -52,6 +66,7 @@ export function useSpeech({ rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) {
   const cancel = useCallback(() => {
     synthRef.current.cancel();
     setIsSpeaking(false);
+    isSpeakingRef.current = false;
   }, []);
 
   const repeat = useCallback(() => {
@@ -63,5 +78,5 @@ export function useSpeech({ rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) {
     return () => synthRef.current.cancel();
   }, []);
 
-  return { speak, pause, resume, cancel, repeat, isSpeaking, lastText: lastTextRef.current };
+  return { speak, pause, resume, cancel, repeat, isSpeaking, isSpeakingRef, lastText: lastTextRef.current };
 }

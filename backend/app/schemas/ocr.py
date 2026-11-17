@@ -22,5 +22,6 @@ class OCRResponse(BaseModel):
     total_blocks_count: int = Field(..., description="Number of recognized text segments")
     total_text: str = Field(..., description="Full concatenated text detected in the image")
     speech_text: str = Field(..., description="Speech-optimized reading of the recognized text")
+    framing_guidance: Optional[str] = Field(None, description="Spoken framing guidance if text is cropped or cut off at frame edges")
     blocks: List[OCRBlock] = Field(default_factory=list, description="Detailed list of recognized text segments")
     message: Optional[str] = Field(None, description="Diagnostic notes if no text was found")

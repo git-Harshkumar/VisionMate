@@ -70,10 +70,14 @@ def _process_frame(
         frame_height=frame_h
     )
 
-    # 6. Optional visual annotation overlay
+    # 6. Optional visual annotation overlay with corridor path lines
     annotated_b64: Optional[str] = None
     if return_annotated:
-        annotated_img = ImageProcessor.draw_detections(resized_image, tracked_detections)
+        annotated_img = ImageProcessor.draw_detections(
+            image=resized_image,
+            detections=tracked_detections,
+            navigation=nav_guidance
+        )
         annotated_b64 = ImageProcessor.encode_to_base64_jpeg(annotated_img, quality=80)
 
     total_time_ms = round((time.perf_counter() - start_total) * 1000, 2)

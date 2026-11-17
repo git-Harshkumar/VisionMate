@@ -17,6 +17,7 @@ from backend.app.routes.health import router as health_router
 from backend.app.routes.inspect import router as inspect_router
 from backend.app.routes.model_info import router as model_info_router
 from backend.app.routes.read_text import router as read_text_router
+from backend.app.routes.vlm import router as vlm_router
 
 
 @asynccontextmanager
@@ -59,6 +60,7 @@ app.include_router(health_router, prefix=settings.API_V1_STR)
 app.include_router(inspect_router, prefix=settings.API_V1_STR)
 app.include_router(model_info_router, prefix=settings.API_V1_STR)
 app.include_router(read_text_router, prefix=settings.API_V1_STR)
+app.include_router(vlm_router, prefix=settings.API_V1_STR)
 
 # Also expose health check at top level for container orchestrators
 app.include_router(health_router, prefix="")

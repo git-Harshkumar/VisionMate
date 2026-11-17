@@ -120,6 +120,26 @@ export function ReadTextButton({
           >
             {ocrResult.total_text || ocrResult.full_text || "No readable text detected in current view."}
           </div>
+
+          {ocrResult.framing_guidance && (
+            <div
+              style={{
+                fontSize: "0.85rem",
+                color: "#ffa940",
+                backgroundColor: "rgba(255, 169, 64, 0.12)",
+                padding: "8px 12px",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                marginTop: "10px",
+                border: "1px solid rgba(255, 169, 64, 0.3)",
+              }}
+              role="alert"
+            >
+              📐 <strong>Framing Cue:</strong> {ocrResult.framing_guidance}
+            </div>
+          )}
         </div>
       )}
     </div>

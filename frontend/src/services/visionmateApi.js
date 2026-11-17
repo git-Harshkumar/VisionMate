@@ -71,3 +71,23 @@ export async function readTextFromFrame(imageBase64) {
     }),
   });
 }
+
+/**
+ * POST /api/v1/ask-vlm
+ * Tier 2 Cloud/VLM multimodal query for conversational scene understanding.
+ * @param {string} imageBase64 - Camera frame snapshot
+ * @param {string} prompt - Question or request (e.g. "What is in front of me?", "Read handwriting")
+ * @param {string} intent - Intent identifier
+ * @returns {Promise<VLMResponse>}
+ */
+export async function askVLM(imageBase64, prompt = "Describe this scene for a blind person navigating.", intent = "scene_description") {
+  return apiFetch(`${API_PREFIX}/ask-vlm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      image_base64: imageBase64,
+      prompt: prompt,
+      intent: intent,
+    }),
+  });
+}

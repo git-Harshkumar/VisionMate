@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     MAX_OBSERVATIONS_PER_FRAME: int = 6  # More objects = better spatial awareness for navigation
     COOLDOWN_SECONDS: float = 3.5        # Faster re-announcements in navigation mode
     
+    # VLM / Tier 2 Cloud Assistant
+    GEMINI_API_KEY: str = ""
+    VLM_MODEL_NAME: str = "gemini-1.5-flash"
+    
     # Priority Obstacles (Higher priority for immediate navigation awareness)
     HIGH_PRIORITY_CLASSES: List[str] = [
         "person", "car", "bus", "truck", "traffic light", "stop sign",
