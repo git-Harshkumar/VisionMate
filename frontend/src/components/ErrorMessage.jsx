@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { Icon } from "./Icon";
 
 export function ErrorMessage({ message, onDismiss }) {
   if (!message) return null;
@@ -20,7 +21,7 @@ export function ErrorMessage({ message, onDismiss }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <span className="error-icon" aria-hidden="true">
-          ⚠️
+          <Icon name="alert-triangle" size={16} />
         </span>
         <span>{message}</span>
       </div>
@@ -39,7 +40,7 @@ export function ErrorMessage({ message, onDismiss }) {
           }}
           aria-label="Dismiss error message"
         >
-          ✕
+          <Icon name="x" size={14} />
         </button>
       )}
     </div>
