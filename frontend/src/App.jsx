@@ -24,6 +24,7 @@ import { useVoiceCommands } from "./hooks/useVoiceCommands";
 import { fetchHealth, inspectFrame, readTextFromFrame, askVLM } from "./services/visionmateApi";
 
 import { Header } from "./components/Header";
+import { Icon } from "./components/Icon";
 import { CameraStatus } from "./components/CameraStatus";
 import { ErrorMessage } from "./components/ErrorMessage";
 import { CameraPreview } from "./components/CameraPreview";
@@ -31,6 +32,7 @@ import { NavigationCard } from "./components/NavigationCard";
 import { SpeechBanner } from "./components/SpeechBanner";
 import { ControlPanel } from "./components/ControlPanel";
 import { DetectionOverlay } from "./components/DetectionOverlay";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ReadTextButton } from "./components/ReadTextButton";
 import { MetricsCard } from "./components/MetricsCard";
 import { VoiceStatusPill } from "./components/VoiceStatusPill";
@@ -82,6 +84,7 @@ export default function App() {
   // On-Demand OCR State
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
+  const [vlmReading, setVlmReading] = useState(null);
 
   // Tier 2 Multimodal VLM State & Voice
   const [vlmLoading, setVlmLoading] = useState(false);
@@ -296,18 +299,20 @@ export default function App() {
   }, [captureFrame, sampleImage, processFrame]);
 
   /**
-   * Dedicated Reading & Item Orientation Mode Toggle
+   * Dedicated Reading & Item Orientation Mode Toggle.
+   * While active, the continuous inspection loop is paused (see effect below)
+   * so no frames are sent for obstacle detection and no navigation speech fires.
    */
-  const handleToggleReadingMode = useCallback(async () => {
-    setIsReadingMode((prev) => {
-      const next = !prev;
-      if (next) {
-        speak("Entering reading mode. Obstacle warnings paused. Hold the item in front of the lens. Checking orientation.");
-      } else {
-        speak("Exiting reading mode. Resuming navigation obstacle detection.");
-      }
-      return next;
-    });
+  const handleToggleReadingMode = useCallback(() => {
+    const next = !isReadingModeRef.current;
+    setIsReadingMode(next);
+    if (next) {
+      setOcrResult(null);
+      setVlmReading(null);
+      speak("Reading mode on. Obstacle warnings paused. Hold the item in front of the camera, then press Read Text.");
+    } else {
+      speak("Reading mode off. Resuming navigation guidance.");
+    }
   }, [speak]);
 
   /**
@@ -324,32 +329,48 @@ export default function App() {
     setErrorMessage(null);
 
     try {
-      // Direct call to Gemini Multimodal AI for 100% reading accuracy & item explanation
-      const vlmPromise = askVLM(
-        frame,
-        "Read all text visible on this item accurately and describe what this object is and what it is all about. If text is mirrored or reversed by the webcam, read it correctly. If any text is cut off, give brief framing advice."
-      );
-
-      // Run local OCR in parallel as fast fallback
-      const ocrPromise = readTextFromFrame(frame).catch(() => null);
-
-      const [vlmRes, ocrRes] = await Promise.all([vlmPromise, ocrPromise]);
+      // Cloud VLM (rich item reading) and local EasyOCR run in parallel.
+      // Each is allowed to fail independently so one broken service never
+      // takes down the whole reading flow.
+      const [vlmRes, ocrRes] = await Promise.all([
+        askVLM(
+          frame,
+          "Read all text visible on this item accurately and describe what this object is and what it is all about. If text is mirrored or reversed by the webcam, read it correctly. If any text is cut off, give brief framing advice."
+        ).catch(() => null),
+        readTextFromFrame(frame).catch(() => null),
+      ]);
 
       if (ocrRes) {
         setOcrResult(ocrRes);
       }
 
+      // Only trust the VLM answer when it is a real model response — not the
+      // offline rule fallback, an API-key error, or a network failure.
+      const vlmUsable =
+        vlmRes &&
+        vlmRes.success === true &&
+        vlmRes.spoken_response &&
+        !vlmRes.spoken_response.includes("GEMINI_API_KEY") &&
+        !(vlmRes.model_used || "").includes("Fallback") &&
+        !(vlmRes.model_used || "").includes("Error");
+
+      setVlmReading(vlmUsable ? vlmRes.spoken_response : null);
+
       let textToSpeak = "";
 
-      if (vlmRes && vlmRes.spoken_response && !vlmRes.spoken_response.includes("GEMINI_API_KEY")) {
+      if (vlmUsable) {
         textToSpeak = vlmRes.spoken_response;
-      } else if (ocrRes && (ocrRes.speech_text || ocrRes.total_text)) {
+      } else if (ocrRes && ocrRes.success) {
         textToSpeak = ocrRes.speech_text || ocrRes.total_text;
-        if (ocrRes.framing_guidance) {
+        if (ocrRes.framing_guidance && ocrRes.total_blocks_count > 0) {
           textToSpeak = `${textToSpeak} ${ocrRes.framing_guidance}`;
         }
+      } else if (ocrRes) {
+        // OCR endpoint answered but reported an internal failure
+        textToSpeak = "The text reader hit an error. Please try again in a moment.";
       } else {
-        textToSpeak = "No clear text found. Please hold the item about 10 inches directly in front of the camera lens.";
+        setErrorMessage("Text reading is unavailable. Please check that the backend server is running.");
+        return;
       }
 
       if (!audioMutedRef.current && textToSpeak) {
@@ -439,7 +460,10 @@ export default function App() {
    * Continuous Acquisition Loop
    */
   useEffect(() => {
-    if (!isStreaming || !isInspecting) return;
+    // Reading mode pauses the obstacle-detection loop entirely: the user is
+    // holding an item up to read, so frames would only waste backend compute
+    // and keep the navigation card churning with irrelevant updates.
+    if (!isStreaming || !isInspecting || isReadingMode) return;
 
     const timer = setInterval(() => {
       if (!processingRef.current) {
@@ -451,7 +475,7 @@ export default function App() {
     }, THROTTLE_MS);
 
     return () => clearInterval(timer);
-  }, [isStreaming, isInspecting, captureFrame, processFrame]);
+  }, [isStreaming, isInspecting, isReadingMode, captureFrame, processFrame]);
 
   /**
    * Handle Sample Static Image Upload
@@ -498,7 +522,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [repeatSpeech, handleTriggerOcr, handleInspectOnce]);
+  }, [repeatSpeech, handleTriggerOcr, handleInspectOnce, handleToggleReadingMode]);
 
   return (
     <div className="app-container">
@@ -514,6 +538,7 @@ export default function App() {
           frameCount={frameCount}
           isInspecting={isInspecting}
           navigationMode={navigationMode}
+          isReadingMode={isReadingMode}
         />
       </div>
 
@@ -556,13 +581,18 @@ export default function App() {
             onStartCamera={startCamera}
             onSwitchCamera={switchCamera}
             onSampleImageLoaded={handleSampleImageLoaded}
+            overlayActive={isInspecting && !isReadingMode}
           />
 
           {/* Spoken Announcement Banner */}
           <SpeechBanner
             lastAnnouncement={
               lastSpokenText ||
-              (navigationMode && latestInspection?.navigation?.guidance_speech
+              // Never fall back to stale navigation guidance while Reading
+              // Mode has the inspection loop paused.
+              (isReadingMode
+                ? "Reading Mode is on: obstacle guidance is paused."
+                : navigationMode && latestInspection?.navigation?.guidance_speech
                 ? latestInspection.navigation.guidance_speech
                 : latestInspection?.speech_text ||
                   latestInspection?.announcement)
@@ -590,77 +620,50 @@ export default function App() {
             onToggleNavigationMode={() => setNavigationMode((prev) => !prev)}
           />
 
-          {/* Dedicated Read & Examine Item Mode Button */}
-          <button
-            onClick={handleToggleReadingMode}
-            style={{
-              backgroundColor: isReadingMode ? "#ff9800" : "#20233b",
-              color: isReadingMode ? "#000" : "#ffb74d",
-              border: "2px solid #ff9800",
-              borderRadius: "8px",
-              padding: "0.85rem 1rem",
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: "1rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.6rem",
-              width: "100%",
-              marginTop: "12px",
-              boxShadow: isReadingMode ? "0 0 15px rgba(255, 152, 0, 0.4)" : "none",
-            }}
-            aria-pressed={isReadingMode}
-            aria-label="Toggle Reading and Item Examination Mode"
-          >
-            {isReadingMode ? "📖 Reading Mode ACTIVE (Obstacles Paused)" : "📖 Switch to Reading & Item Mode"}
-          </button>
         </div>
 
         {/* Right Column: Safe Path Guide, OCR, Prioritized Detections & Metrics */}
         <div className="column-stack">
           {/* Safe Walking Path & Corridor Navigation Guide */}
-          <NavigationCard
-            navigation={latestInspection?.navigation}
-            onSpeakGuidance={(text) => speak(text)}
-          />
+          <ErrorBoundary label="Safe Path Guide">
+            <NavigationCard
+              navigation={latestInspection?.navigation}
+              onSpeakGuidance={(text) => speak(text)}
+              paused={isReadingMode}
+            />
+          </ErrorBoundary>
 
           {/* On-Demand Text Reader (OCR) */}
-          <ReadTextButton
-            isStreaming={isStreaming || !!sampleImage}
-            isLoading={ocrLoading}
-            ocrResult={ocrResult}
-            onTriggerOcr={handleTriggerOcr}
-            onSpeakText={(text) => speak(text)}
-          />
+          <ErrorBoundary label="Reading Mode">
+            <ReadTextButton
+              isStreaming={isStreaming || !!sampleImage}
+              isLoading={ocrLoading}
+              ocrResult={ocrResult}
+              vlmText={vlmReading}
+              isReadingMode={isReadingMode}
+              onToggleReadingMode={handleToggleReadingMode}
+              onTriggerOcr={handleTriggerOcr}
+              onSpeakText={(text) => speak(text)}
+            />
+          </ErrorBoundary>
 
           {/* Tier 2 Multimodal AI Scene Inquirer */}
           <button
+            type="button"
+            className="ai-btn"
             onClick={() => handleAskVLM()}
             disabled={vlmLoading || (!isStreaming && !sampleImage)}
-            style={{
-              backgroundColor: "#20233b",
-              color: "#4cc9f0",
-              border: "1px solid #4cc9f0",
-              borderRadius: "8px",
-              padding: "0.75rem 1rem",
-              cursor: vlmLoading ? "not-allowed" : "pointer",
-              fontWeight: 600,
-              fontSize: "0.95rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-              width: "100%",
-            }}
             title="Ask AI to describe the entire scene (VLM Tier 2)"
             aria-label="Describe scene with AI"
           >
-            🧠 {vlmLoading ? "Consulting AI..." : "Ask AI: What's In Front Of Me?"}
+            {vlmLoading && <div className="spinner" style={{ borderTopColor: "var(--accent-info)" }} />}
+            <Icon name="sparkles" size={16} />
+            <span>{vlmLoading ? "Consulting AI..." : "Ask AI: What's In Front Of Me?"}</span>
           </button>
 
           {/* Prioritized Detections List */}
-          <DetectionOverlay
+          <ErrorBoundary label="Observed Objects">
+            <DetectionOverlay
             detections={
               latestInspection?.detections ||
               latestInspection?.prioritized_detections ||
@@ -672,10 +675,14 @@ export default function App() {
               latestInspection?.summary_metrics?.prioritized_count ??
               0
             }
+            stale={isReadingMode || !isInspecting}
+            hasInspected={!!latestInspection}
           />
+          </ErrorBoundary>
 
           {/* Latency & Telemetry */}
-          <MetricsCard
+          <ErrorBoundary label="Perception Telemetry">
+            <MetricsCard
             metrics={
               latestInspection
                 ? {
@@ -694,7 +701,9 @@ export default function App() {
                 : null
             }
             totalLatencyMs={totalLatencyMs}
+            stale={isReadingMode || !isInspecting}
           />
+          </ErrorBoundary>
         </div>
       </main>
 
