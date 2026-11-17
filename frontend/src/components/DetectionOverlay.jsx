@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { Icon } from "./Icon";
 
 const HAZARD_LABELS = new Set([
   "car", "truck", "bus", "motorcycle", "bicycle", "traffic light", "stop sign",
@@ -27,7 +28,7 @@ function getPositionBadge(position) {
 function getProminenceBadge(prominence) {
   const prom = (prominence || "").toLowerCase();
   if (prom.includes("prominent") || prom.includes("close") || prom.includes("near")) {
-    return <span className="badge badge-warning">⚠ Prominent / Near</span>;
+    return <span className="badge badge-warning" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><Icon name="alert-triangle" size={11} /> Prominent / Near</span>;
   }
   if (prom.includes("mid")) {
     return <span className="badge badge-purple">Mid-range</span>;
@@ -35,29 +36,46 @@ function getProminenceBadge(prominence) {
   return <span className="badge badge-success">Distant</span>;
 }
 
-export function DetectionOverlay({ detections = [], totalCount = 0 }) {
+export function DetectionOverlay({ detections = [], totalCount = 0, stale = false, hasInspected = true }) {
   const isSafetyHazard = (label) => HAZARD_LABELS.has(label?.toLowerCase());
 
   return (
     <div className="card" style={{ padding: "20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
         <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>👁️ Observed Objects</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}><Icon name="eye" size={17} /> Observed Objects</span>
         </h3>
-        <span className="badge badge-purple" aria-label={`${detections.length} objects detected`}>
-          {detections.length} {detections.length === 1 ? "Object" : "Objects"}
+        <span style={{ display: "inline-flex", gap: "6px", alignItems: "center" }}>
+          {stale && (
+            <span className="badge badge-warning">Paused &mdash; last inspection</span>
+          )}
+          <span className="badge badge-purple" aria-label={`${detections.length} objects detected`}>
+            {detections.length} {detections.length === 1 ? "Object" : "Objects"}
+          </span>
         </span>
       </div>
 
       {detections.length === 0 ? (
         <div style={{ textAlign: "center", padding: "24px 12px", color: "var(--text-muted)" }}>
-          <p style={{ fontSize: "0.95rem" }}>No prioritized objects currently in view.</p>
-          <p style={{ fontSize: "0.8rem", marginTop: "4px" }}>
-            The scene appears clear or objects are below detection threshold.
-          </p>
+          {!hasInspected ? (
+            <>
+              <p style={{ fontSize: "0.95rem" }}>No frames inspected yet.</p>
+              <p style={{ fontSize: "0.8rem", marginTop: "4px" }}>
+                Nothing is known about the scene ahead until the first frame is analyzed.
+              </p>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: "0.95rem" }}>No objects above the detection threshold in the last inspected frame.</p>
+              <p style={{ fontSize: "0.8rem", marginTop: "4px" }}>
+                This does not mean the path is clear &mdash; small, low or fast hazards may not be detected.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <ul
+          style={stale ? { opacity: 0.7 } : undefined}
           className="detection-overlay"
           role="list"
           aria-label="List of prioritized detected objects with spatial orientation"
@@ -81,7 +99,7 @@ export function DetectionOverlay({ detections = [], totalCount = 0 }) {
                       aria-label="Safety hazard warning"
                       style={{ color: "var(--accent-warning)" }}
                     >
-                      ⚠️
+                      <Icon name="alert-triangle" size={15} />
                     </span>
                   )}
                   <span className="detection-label">
