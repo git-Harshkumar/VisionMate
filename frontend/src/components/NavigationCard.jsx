@@ -9,6 +9,7 @@
  */
 
 import React from "react";
+import { Icon } from "./Icon";
 
 function getStatusStyle(status) {
   switch (status) {
@@ -16,7 +17,7 @@ function getStatusStyle(status) {
       return {
         badge: "badge-success",
         label: "CLEAR",
-        icon: "✓",
+        icon: "check",
         bg: "rgba(0, 212, 170, 0.08)",
         border: "rgba(0, 212, 170, 0.35)",
         color: "var(--accent-secondary)",
@@ -25,7 +26,7 @@ function getStatusStyle(status) {
       return {
         badge: "badge-warning",
         label: "CAUTION",
-        icon: "⚠",
+        icon: "alert-triangle",
         bg: "rgba(255, 169, 64, 0.08)",
         border: "rgba(255, 169, 64, 0.35)",
         color: "var(--accent-warning)",
@@ -35,7 +36,7 @@ function getStatusStyle(status) {
       return {
         badge: "badge-danger",
         label: "BLOCKED",
-        icon: "✕",
+        icon: "x",
         bg: "rgba(255, 77, 79, 0.12)",
         border: "rgba(255, 77, 79, 0.45)",
         color: "var(--accent-danger)",
@@ -47,7 +48,7 @@ function getActionBanner(action) {
   switch (action) {
     case "straight":
       return {
-        icon: "⬆️",
+        icon: "arrow-up",
         title: "SAFE FORWARD PATH",
         subtitle: "Walk straight ahead",
         bg: "linear-gradient(135deg, rgba(0, 212, 170, 0.25), rgba(0, 212, 170, 0.05))",
@@ -56,7 +57,7 @@ function getActionBanner(action) {
       };
     case "veer_right":
       return {
-        icon: "↗️",
+        icon: "arrow-up-right",
         title: "STEP RIGHT — SAFE CORRIDOR",
         subtitle: "Center path obstructed, veer slightly right",
         bg: "linear-gradient(135deg, rgba(255, 169, 64, 0.25), rgba(255, 169, 64, 0.05))",
@@ -65,7 +66,7 @@ function getActionBanner(action) {
       };
     case "veer_left":
       return {
-        icon: "↖️",
+        icon: "arrow-up-left",
         title: "STEP LEFT — SAFE CORRIDOR",
         subtitle: "Center path obstructed, veer slightly left",
         bg: "linear-gradient(135deg, rgba(255, 169, 64, 0.25), rgba(255, 169, 64, 0.05))",
@@ -75,7 +76,7 @@ function getActionBanner(action) {
     case "stop":
     default:
       return {
-        icon: "🛑",
+        icon: "octagon",
         title: "STOP — PATH BLOCKED",
         subtitle: "Follow the steps below to find a clear route",
         bg: "linear-gradient(135deg, rgba(255, 77, 79, 0.35), rgba(255, 77, 79, 0.1))",
@@ -96,12 +97,38 @@ function parseStopSteps(guidanceSpeech) {
     .filter(Boolean);
 }
 
-export function NavigationCard({ navigation, onSpeakGuidance }) {
+export function NavigationCard({ navigation, onSpeakGuidance, paused = false }) {
+  // Reading Mode pauses the inspection loop, so any stored guidance is STALE.
+  // Never show old walking directions while paused: hide them entirely and say
+  // clearly that nothing is being checked right now.
+  if (paused) {
+    return (
+      <div className="card" style={{ padding: "20px" }} role="region" aria-label="Navigation paused while reading mode is on">
+        <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Icon name="compass" size={20} />
+          <span>Safe Walking Path Guide</span>
+        </h3>
+        <div className="nav-paused" role="alert">
+          <Icon name="pause" size={22} />
+          <div>
+            <strong>Paused while Reading Mode is on</strong>
+            <p>
+              No camera frames are being checked for obstacles right now, and earlier
+              directions are hidden because they may be out of date. Do not walk by old
+              guidance. Turn Reading Mode off to resume live obstacle detection.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!navigation) {
     return (
       <div className="card" style={{ padding: "20px" }}>
         <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>🧭 Safe Walking Path Guide</span>
+          <Icon name="compass" size={20} />
+          <span>Safe Walking Path Guide</span>
         </h3>
         <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "8px" }}>
           Awaiting camera frames to assess walkable corridors and ground obstacles.
@@ -121,9 +148,17 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
   } = navigation;
   const banner = getActionBanner(action);
 
-  const leftInfo  = corridors?.left   || { status: "clear", obstacles: [], clearance_score: 1.0 };
-  const centerInfo= corridors?.center || { status: "clear", obstacles: [], clearance_score: 1.0 };
-  const rightInfo = corridors?.right  || { status: "clear", obstacles: [], clearance_score: 1.0 };
+  // Normalize corridor payloads defensively: a partial or malformed corridor
+  // object must never crash the whole render tree.
+  const emptyCorridor = { status: "clear", obstacles: [], clearance_score: 1.0 };
+  const normalizeCorridor = (c) => ({
+    ...emptyCorridor,
+    ...(c || {}),
+    obstacles: Array.isArray(c?.obstacles) ? c.obstacles : [],
+  });
+  const leftInfo  = normalizeCorridor(corridors?.left);
+  const centerInfo= normalizeCorridor(corridors?.center);
+  const rightInfo = normalizeCorridor(corridors?.right);
 
   const leftStyle   = getStatusStyle(leftInfo.status);
   const centerStyle = getStatusStyle(centerInfo.status);
@@ -149,7 +184,8 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
         <h3 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
-          <span>🧭 Safe Walking Path Guide</span>
+          <Icon name="compass" size={20} />
+          <span>Safe Walking Path Guide</span>
         </h3>
         <span className="badge badge-purple" style={{ textTransform: "uppercase" }}>
           Indoor Mobility
@@ -174,7 +210,7 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
           }}
           role="alert"
         >
-          <span>⚠️</span>
+          <Icon name="alert-triangle" size={16} />
           <span>Caution: {urgent_hazard}</span>
         </div>
       )}
@@ -192,8 +228,8 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
           marginBottom: "14px",
         }}
       >
-        <div style={{ fontSize: "2.2rem", lineHeight: 1 }} aria-hidden="true">
-          {banner.icon}
+        <div style={{ lineHeight: 1, color: banner.textColor }} aria-hidden="true">
+          <Icon name={banner.icon} size={38} strokeWidth={2.4} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: "1.0rem", fontWeight: 700, color: banner.textColor }}>
@@ -213,7 +249,9 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
             aria-label="Replay walking guidance aloud"
             title="Read guidance aloud"
           >
-            🔊 Hear
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Icon name="volume" size={14} /> Hear
+            </span>
           </button>
         )}
       </div>
@@ -232,7 +270,9 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
             gap: "10px",
           }}
         >
-          <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>ℹ️</span>
+          <span style={{ flexShrink: 0, color: "var(--accent-info)", marginTop: "1px" }}>
+            <Icon name="info" size={17} />
+          </span>
           <div>
             <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "3px", fontWeight: 700 }}>
               What is ahead & Why:
@@ -248,7 +288,9 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
       {displaySteps.length > 0 && (
         <div style={{ marginBottom: "14px" }}>
           <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: isStop ? "var(--accent-danger)" : "var(--accent-secondary)", marginBottom: "8px", fontWeight: 600 }}>
-            🔢 {isStop ? "What to do next:" : "Next steps:"}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <Icon name="list" size={14} /> {isStop ? "What to do next:" : "Next steps:"}
+            </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             {displaySteps.map((step, idx) => (
@@ -309,7 +351,9 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
           >
             <div style={{ fontSize: "0.73rem", color: "var(--text-secondary)", fontWeight: 600 }}>◀ Left</div>
             <div style={{ fontSize: "0.88rem", fontWeight: 700, color: leftStyle.color, marginTop: "4px" }}>
-              {leftStyle.icon} {leftStyle.label}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                <Icon name={leftStyle.icon} size={12} /> {leftStyle.label}
+              </span>
             </div>
             <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "4px", minHeight: "14px" }}>
               {leftInfo.obstacles.length > 0 ? leftInfo.obstacles.slice(0,2).join(", ") : "Path Open"}
@@ -329,7 +373,9 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
           >
             <div style={{ fontSize: "0.73rem", color: "var(--text-primary)", fontWeight: 700 }}>● Center</div>
             <div style={{ fontSize: "0.92rem", fontWeight: 800, color: centerStyle.color, marginTop: "4px" }}>
-              {centerStyle.icon} {centerStyle.label}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                <Icon name={centerStyle.icon} size={12} /> {centerStyle.label}
+              </span>
             </div>
             <div style={{ fontSize: "0.68rem", color: "var(--text-secondary)", marginTop: "4px", minHeight: "14px" }}>
               {centerInfo.obstacles.length > 0 ? centerInfo.obstacles.slice(0,2).join(", ") : "Path Clear"}
@@ -348,7 +394,9 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
           >
             <div style={{ fontSize: "0.73rem", color: "var(--text-secondary)", fontWeight: 600 }}>Right ▶</div>
             <div style={{ fontSize: "0.88rem", fontWeight: 700, color: rightStyle.color, marginTop: "4px" }}>
-              {rightStyle.icon} {rightStyle.label}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                <Icon name={rightStyle.icon} size={12} /> {rightStyle.label}
+              </span>
             </div>
             <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "4px", minHeight: "14px" }}>
               {rightInfo.obstacles.length > 0 ? rightInfo.obstacles.slice(0,2).join(", ") : "Path Open"}
@@ -371,7 +419,9 @@ export function NavigationCard({ navigation, onSpeakGuidance }) {
           lineHeight: "1.5",
         }}
       >
-        <span style={{ color: "var(--accent-secondary)", fontSize: "1.0rem", flexShrink: 0 }}>💬</span>
+        <span style={{ color: "var(--accent-secondary)", flexShrink: 0, marginTop: "2px" }}>
+          <Icon name="message" size={15} />
+        </span>
         <span style={{ fontStyle: "italic" }}>
           &ldquo;{guidance_speech || "Path assessment in progress..."}&rdquo;
         </span>
