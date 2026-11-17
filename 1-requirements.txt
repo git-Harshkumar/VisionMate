@@ -1,0 +1,21 @@
+# VisionMate Backend Dependencies
+# Install from the project root:  python -m pip install -r requirements.txt
+
+# --- API framework ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9        # required for multipart file uploads (/inspect, /read-text)
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+
+# --- Computer vision & ML ---
+numpy>=1.26.0
+opencv-python-headless>=4.9.0
+ultralytics>=8.2.0             # YOLOv8n object detection (pulls in torch)
+easyocr>=1.7.0                 # on-demand OCR text reading
+
+# --- Tier-2 cloud VLM (Gemini) ---
+httpx>=0.27.0
+
+# --- Tests ---
+pytest>=8.0.0
