@@ -6,6 +6,7 @@
  */
 
 import React from "react";
+import { Icon } from "./Icon";
 
 export function Header({ apiHealth }) {
   return (
@@ -49,7 +50,7 @@ export function Header({ apiHealth }) {
           }}
           title="VisionMate is an assistive perception prototype, not a certified navigation device."
         >
-          <span>⚠️ Perception Prototype</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><Icon name="alert-triangle" size={13} /> Perception Prototype</span>
         </div>
 
         {/* Link to Swagger Docs */}
@@ -60,7 +61,7 @@ export function Header({ apiHealth }) {
           className="btn btn-ghost btn-sm"
           aria-label="Open backend FastAPI Swagger API documentation in new tab"
         >
-          <span>API Docs ↗</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>API Docs <Icon name="external" size={13} /></span>
         </a>
       </div>
     </header>
