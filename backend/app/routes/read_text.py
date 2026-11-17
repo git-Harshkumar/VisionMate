@@ -8,9 +8,8 @@ Purpose:
 - Runs EasyOCR and returns structured text blocks + speech-ready announcement.
 """
 
-import time
-from typing import Optional
 from fastapi import APIRouter, File, UploadFile, HTTPException, Body
+from fastapi.concurrency import run_in_threadpool
 
 from backend.app.schemas.ocr import OCRResponse
 from backend.app.schemas.inspection import InspectionRequest
@@ -18,6 +17,11 @@ from backend.app.vision.image_processor import ImageProcessor
 from backend.app.vision.ocr import OCRService
 
 router = APIRouter(tags=["OCR"])
+
+# EasyOCR inference is CPU-bound and synchronous; always run it in a
+# threadpool so a single reading never blocks the whole API event loop
+# (health checks and navigation frames would otherwise freeze for
+# several seconds while text is being read).
 
 
 @router.post("/read-text", response_model=OCRResponse)
@@ -37,7 +41,7 @@ async def read_text_multipart(
         raise HTTPException(status_code=500, detail=f"Image upload handling failed: {str(e)}")
 
     ocr_service = OCRService()
-    return ocr_service.read_text(image)
+    return await run_in_threadpool(ocr_service.read_text, image)
 
 
 @router.post("/read-text-json", response_model=OCRResponse)
@@ -58,4 +62,4 @@ async def read_text_json(
         raise HTTPException(status_code=500, detail=f"Base64 processing failed: {str(e)}")
 
     ocr_service = OCRService()
-    return ocr_service.read_text(image)
+    return await run_in_threadpool(ocr_service.read_text, image)
