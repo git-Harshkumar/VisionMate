@@ -15,6 +15,7 @@ export function CameraStatus({
   frameCount = 0,
   isInspecting,
   navigationMode = true,
+  isReadingMode = false,
 }) {
   const isApiOnline = apiHealth?.status === "ok";
 
@@ -76,11 +77,11 @@ export function CameraStatus({
       {/* Frames Analyzed & Perception Status */}
       <div className="camera-status">
         <span
-          className={`status-dot ${isInspecting ? "active" : ""}`}
-          style={{ background: isInspecting ? "var(--accent-warning)" : "var(--text-muted)" }}
+          className={`status-dot ${isInspecting && !isReadingMode ? "active" : ""}`}
+          style={{ background: isReadingMode ? "var(--accent-info)" : isInspecting ? "var(--accent-warning)" : "var(--text-muted)" }}
         />
         <span>
-          Frames: <strong>{frameCount}</strong> ({isInspecting ? "Running" : "Paused"})
+          Frames: <strong>{frameCount}</strong> ({isReadingMode ? "Paused - Reading Mode" : isInspecting ? "Running" : "Paused"})
         </span>
       </div>
     </div>
