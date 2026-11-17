@@ -7,12 +7,13 @@
  */
 
 import React from "react";
+import { Icon } from "./Icon";
 
-export function MetricsCard({ metrics, totalLatencyMs }) {
+export function MetricsCard({ metrics, totalLatencyMs, stale = false }) {
   if (!metrics) {
     return (
       <div className="card" style={{ padding: "20px" }}>
-        <h3 style={{ marginBottom: "12px" }}>📊 Perception Telemetry</h3>
+        <h3 style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}><Icon name="bar-chart" size={18} /> Perception Telemetry</h3>
         <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
           Awaiting first frame inspection for telemetry benchmarks.
         </p>
@@ -29,10 +30,14 @@ export function MetricsCard({ metrics, totalLatencyMs }) {
   return (
     <div className="card" style={{ padding: "20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <h3>📊 Perception Telemetry</h3>
-        <span className="badge badge-success">
-          ~{(1000 / Math.max(Number(totalBackend), 1)).toFixed(1)} FPS Max Cap
-        </span>
+        <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}><Icon name="bar-chart" size={18} /> Perception Telemetry</h3>
+        {stale ? (
+          <span className="badge badge-warning">Last inspection (paused)</span>
+        ) : (
+          <span className="badge badge-success">
+            ~{(1000 / Math.max(Number(totalBackend), 1)).toFixed(1)} FPS Max Cap
+          </span>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px" }}>
