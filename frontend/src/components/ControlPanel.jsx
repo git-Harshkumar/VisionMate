@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { Icon } from "./Icon";
 
 export function ControlPanel({
   isStreaming,
@@ -26,7 +27,7 @@ export function ControlPanel({
   return (
     <div className="card control-panel" style={{ padding: "20px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3>🎮 Vision & Audio Controls</h3>
+        <h3 style={{ display: "flex", alignItems: "center", gap: "8px" }}><Icon name="sliders" size={18} /> Vision & Audio Controls</h3>
         <span className="badge badge-purple" style={{ fontSize: "0.75rem" }}>
           Shortcuts Active
         </span>
@@ -40,7 +41,7 @@ export function ControlPanel({
           onClick={onToggleCamera}
           aria-label={isStreaming ? "Stop camera stream" : "Start camera stream"}
         >
-          <span>{isStreaming ? "⏹ Stop Camera" : "▶ Start Camera"}</span>
+          <span>{isStreaming ? (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="square" size={13} /> Stop Camera</span>) : (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="play" size={13} /> Start Camera</span>)}</span>
         </button>
 
         {/* Navigation Mode vs Object Inspection Mode */}
@@ -55,7 +56,7 @@ export function ControlPanel({
           }
           title="Shortcut: N (Switch between Safe Path Guide and Object Catalog)"
         >
-          <span>{navigationMode ? "🧭 Safe Path Guide: ON" : "👁️ Catalog Mode: ON"}</span>
+          <span>{navigationMode ? (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="compass" size={14} /> Safe Path Guide: ON</span>) : (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="eye" size={14} /> Catalog Mode: ON</span>)}</span>
         </button>
 
         {/* Continuous Inspection Loop Pause / Resume */}
@@ -71,7 +72,7 @@ export function ControlPanel({
           }
           title="Shortcut: Spacebar"
         >
-          <span>{isInspecting ? "⏸ Pause Loop" : "▶ Resume Loop"}</span>
+          <span>{isInspecting ? (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="pause" size={13} /> Pause Loop</span>) : (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="play" size={13} /> Resume Loop</span>)}</span>
         </button>
       </div>
 
@@ -91,7 +92,7 @@ export function ControlPanel({
               <span>Analyzing...</span>
             </>
           ) : (
-            <span>⚡ Inspect Now</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="zap" size={13} /> Inspect Now</span>
           )}
         </button>
 
@@ -103,7 +104,7 @@ export function ControlPanel({
           aria-label="Repeat the most recent voice announcement"
           title="Shortcut: R"
         >
-          <span>🔁 Repeat Speech</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="repeat" size={13} /> Repeat Speech</span>
         </button>
 
         {/* Audio Mute / Unmute */}
@@ -113,7 +114,7 @@ export function ControlPanel({
           onClick={onToggleMute}
           aria-label={audioMuted ? "Unmute spoken descriptions" : "Mute spoken descriptions"}
         >
-          <span>{audioMuted ? "🔇 Audio Muted" : "🔊 Audio On"}</span>
+          <span>{audioMuted ? (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="volume-off" size={14} /> Audio Muted</span>) : (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="volume" size={14} /> Audio On</span>)}</span>
         </button>
 
         {/* Debug Bounding Box Overlay Toggle */}
@@ -123,7 +124,7 @@ export function ControlPanel({
           onClick={onToggleAnnotated}
           aria-label="Toggle visual bounding boxes debug overlay"
         >
-          <span>{showAnnotated ? "🎯 Boxes: ON" : "🎯 Boxes: OFF"}</span>
+          <span>{showAnnotated ? (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="target" size={14} /> Boxes: ON</span>) : (<span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Icon name="target" size={14} /> Boxes: OFF</span>)}</span>
         </button>
       </div>
 
