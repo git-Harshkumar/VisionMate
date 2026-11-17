@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { Icon } from "./Icon";
 
 export function SpeechBanner({
   lastAnnouncement,
@@ -23,7 +24,7 @@ export function SpeechBanner({
       aria-label="Spoken assistant audio output"
     >
       <div className="speech-icon" aria-hidden="true">
-        {isSpeaking ? "🗣️" : "💬"}
+        <Icon name={isSpeaking ? "volume" : "message"} size={18} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -53,7 +54,7 @@ export function SpeechBanner({
             onClick={onCancel}
             aria-label="Stop current speech playback"
           >
-            ⏹ Stop
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><Icon name="square" size={12} /> Stop</span>
           </button>
         )}
         <button
@@ -63,7 +64,7 @@ export function SpeechBanner({
           disabled={!lastAnnouncement}
           aria-label="Replay last speech announcement"
         >
-          🔁 Replay
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}><Icon name="repeat" size={14} /> Replay</span>
         </button>
       </div>
     </div>
