@@ -102,8 +102,8 @@ def _make_center_obstacle(label: str = "chair") -> DetectionItem:
 def test_hindi_clear_path_guidance():
     guidance = NavigationEngine.analyze(detections=[], frame_width=1000, frame_height=1000, language="hi")
     assert guidance.action == NavigationAction.STRAIGHT
-    assert "रास्ता साफ़" in guidance.guidance_speech
-    assert "Path clear" not in guidance.guidance_speech
+    assert "रुकावट नहीं दिख रही" in guidance.guidance_speech
+    assert "No obstacles detected" not in guidance.guidance_speech
 
 
 def test_hindi_urgent_hazard_guidance_uses_obstacle_name():
@@ -135,3 +135,64 @@ def test_unknown_language_falls_back_to_english():
     detections = [_make_center_obstacle("chair")]
     guidance = NavigationEngine.analyze(detections=detections, frame_width=1000, frame_height=1000, language="fr")
     assert "chair" in guidance.guidance_speech.lower()
+
+
+def _make_obstacle(item_id: int, label: str, x1: int, x2: int, y2: int = 950) -> DetectionItem:
+    w, h = x2 - x1, y2 - 700
+    return DetectionItem(
+        id=item_id,
+        label=label,
+        confidence=0.9,
+        box=BoundingBox(x1=x1, y1=700, x2=x2, y2=y2, width=w, height=h, area=w * h),
+        position=SpatialPosition.CENTER,
+        prominence=ProminenceLevel.PROMINENT,
+        area_ratio=round((w * h) / 1_000_000, 4),
+        is_priority=True,
+        description=f"{label} blocking",
+    )
+
+
+def test_hindi_next_steps_are_localized():
+    guidance = NavigationEngine.analyze(detections=[], frame_width=1000, frame_height=1000, language="hi")
+    assert guidance.next_steps
+    assert any("बढ़ें" in step for step in guidance.next_steps)
+
+
+def test_hindi_stop_guidance_speaks_localized_recovery_steps():
+    blocked = [
+        _make_obstacle(1, "chair", 0, 350),
+        _make_obstacle(2, "couch", 350, 650),
+        _make_obstacle(3, "bed", 650, 1000),
+    ]
+    guidance = NavigationEngine.analyze(detections=blocked, frame_width=1000, frame_height=1000, language="hi")
+    assert guidance.action == NavigationAction.STOP
+    assert guidance.next_steps
+    joined = " ".join(guidance.next_steps)
+    assert "रुकें" in joined and "जाँचें" in joined
+    assert "Stop and stand still" not in joined
+
+
+def test_steps_and_speech_avoid_unverifiable_movements():
+    # The camera cannot verify fixed step counts, degree turns or equipment,
+    # so neither spoken guidance nor the numbered steps may prescribe them.
+    scenes = [
+        NavigationEngine.analyze(detections=[], frame_width=1000, frame_height=1000, language=lang)
+        for lang in ("en", "hi")
+    ] + [
+        NavigationEngine.analyze(
+            detections=[
+                _make_obstacle(1, "chair", 0, 350),
+                _make_obstacle(2, "couch", 350, 650),
+                _make_obstacle(3, "bed", 650, 1000),
+            ],
+            frame_width=1000, frame_height=1000, language=lang,
+        )
+        for lang in ("en", "hi")
+    ]
+    for g in scenes:
+        for text in list(g.next_steps) + [g.guidance_speech]:
+            low = text.lower()
+            assert "cane" not in low
+            assert "छड़ी" not in text
+            assert "90 degrees" not in low
+            assert "two steps" not in low
