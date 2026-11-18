@@ -10,8 +10,10 @@ Purpose:
 """
 
 import time
+import threading
 from typing import Optional
 from fastapi import APIRouter, File, UploadFile, HTTPException, Query, Body
+from fastapi.concurrency import run_in_threadpool
 import numpy as np
 
 from backend.app.config import settings
@@ -26,7 +28,17 @@ from backend.app.vision.barrier_detector import BarrierDetector
 router = APIRouter(tags=["Inspection"])
 
 
-def _process_frame(
+# Keep the shared detector/tracker in frame order while CPU work runs off the
+# async event loop. Health and reading requests can then still be serviced.
+_pipeline_lock = threading.Lock()
+
+
+def _process_frame(image, conf_threshold=None, return_annotated=True):
+    with _pipeline_lock:
+        return _process_frame_sync(image, conf_threshold, return_annotated)
+
+
+def _process_frame_sync(
     image: np.ndarray,
     conf_threshold: Optional[float] = None,
     return_annotated: bool = True
@@ -120,7 +132,8 @@ async def inspect_multipart_frame(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image upload handling failed: {str(e)}")
 
-    return _process_frame(
+    return await run_in_threadpool(
+        _process_frame,
         image=image,
         conf_threshold=confidence_threshold,
         return_annotated=return_annotated
@@ -145,7 +158,8 @@ async def inspect_json_frame(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Base64 processing failed: {str(e)}")
 
-    return _process_frame(
+    return await run_in_threadpool(
+        _process_frame,
         image=image,
         conf_threshold=payload.confidence_threshold,
         return_annotated=payload.return_annotated_image
