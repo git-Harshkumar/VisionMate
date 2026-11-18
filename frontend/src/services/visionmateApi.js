@@ -13,12 +13,27 @@ const API_PREFIX = `${BASE_URL}/api/v1`;
  * Core fetch utility with consistent error surfacing.
  */
 async function apiFetch(url, options = {}) {
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.detail || `HTTP ${response.status}: ${response.statusText}`);
+  const { timeoutMs = 20000, signal, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(abort, timeoutMs);
+  let response;
+  try {
+    response = await fetch(url, { ...fetchOptions, signal: controller.signal });
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.detail || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    if (controller.signal.aborted && !signal?.aborted) throw new Error("Request timed out. Please try again.");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
   }
-  return response.json();
 }
 
 /**
@@ -44,8 +59,9 @@ export async function fetchModelInfo() {
  * @param {boolean} returnAnnotated - Whether to request the annotated debug overlay
  * @returns {Promise<InspectionResponse>}
  */
-export async function inspectFrame(imageBase64, returnAnnotated = false) {
+export async function inspectFrame(imageBase64, returnAnnotated = false, signal) {
   return apiFetch(`${API_PREFIX}/inspect-json`, {
+    signal, timeoutMs: 10000,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -63,6 +79,7 @@ export async function inspectFrame(imageBase64, returnAnnotated = false) {
  */
 export async function readTextFromFrame(imageBase64) {
   return apiFetch(`${API_PREFIX}/read-text-json`, {
+    timeoutMs: 30000,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
