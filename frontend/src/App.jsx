@@ -185,6 +185,9 @@ export default function App() {
   // Last announced hazard identity (action + obstacle class). Stable against
   // frame-to-frame detection jitter, unlike the full navigation detail key.
   const hazardAnnounceRef = useRef({ key: "", time: 0 });
+  // Latest localized numbered guidance steps, kept for on-demand spoken replay
+  // (voice command "steps" / Steps button) and post-STOP auto-announcement.
+  const latestStepsRef = useRef([]);
 
   // 1. Initial Health Check
   useEffect(() => {
@@ -214,6 +217,7 @@ export default function App() {
     const timer = setTimeout(() => {
       setLatestInspection(null);
       setAnnotatedImage(null);
+      latestStepsRef.current = [];
     }, MAX_FRAME_AGE_MS);
     return () => clearTimeout(timer);
   }, [latestInspection, isStreaming]);
@@ -260,6 +264,8 @@ export default function App() {
 
         const detectedList = response.detections || response.prioritized_detections || [];
         const nav = response.navigation;
+        // Steps arrive already localized from the backend navigation engine.
+        latestStepsRef.current = Array.isArray(nav?.next_steps) ? nav.next_steps : [];
         const urgent = !!nav?.urgent_hazard || nav?.action === "stop";
         const protectedReading = readingBusyRef.current || isReadingModeRef.current;
         if (!audioMutedRef.current && !protectedReading) {
@@ -285,7 +291,20 @@ export default function App() {
               if (hazardKey !== lastHazard.key || now - lastHazard.time >= 20000) {
                 hazardAnnounceRef.current = { key: hazardKey, time: now };
                 navAnnouncementRef.current = { key, time: now, count: 1 };
+                // After a STOP warning finishes, speak the short recovery
+                // steps once per hazard (deduped like the warning itself).
+                // Other maneuvers keep speech short; steps stay on demand.
+                const stopSteps =
+                  nav.action === "stop" && Array.isArray(nav.next_steps) && nav.next_steps.length
+                    ? nav.next_steps.slice(0, 4)
+                    : null;
                 const opts = { automatic: true, priority: true, dedupeKey: `hazard:${hazardKey}` };
+                if (stopSteps) {
+                  opts.onEnd = () => {
+                    if (audioMutedRef.current || readingBusyRef.current || isReadingModeRef.current || !navigationModeRef.current) return;
+                    speak(stopSteps.join(" "), { automatic: true, dedupeKey: `hazard-steps:${hazardKey}` });
+                  };
+                }
                 // Backend guidance arrives already localized; only the
                 // hard-coded fallback needs frontend localization.
                 const pending = nav.guidance_speech
@@ -507,6 +526,11 @@ export default function App() {
     onRepeat: () => {
       repeatSpeech();
     },
+    onSpeakSteps: () => {
+      const steps = latestStepsRef.current;
+      if (steps && steps.length) speak(steps.join(" "));
+      else speakLocalized("No guidance steps right now.");
+    },
     onReadText: () => {
       handleTriggerOcr();
     },
@@ -547,6 +571,7 @@ export default function App() {
       inspectionControllerRef.current?.abort();
       navCandidateRef.current = { key: "", count: 0 };
       hazardAnnounceRef.current = { key: "", time: 0 };
+      latestStepsRef.current = [];
       setLatestInspection(null);
       setAnnotatedImage(null);
     };
