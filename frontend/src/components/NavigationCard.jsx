@@ -224,6 +224,7 @@ export function NavigationCard({ navigation, onSpeakGuidance, paused = false }) 
           padding: "14px 16px",
           display: "flex",
           alignItems: "center",
+          flexWrap: "wrap",
           gap: "16px",
           marginBottom: "14px",
         }}
@@ -231,7 +232,7 @@ export function NavigationCard({ navigation, onSpeakGuidance, paused = false }) 
         <div style={{ lineHeight: 1, color: banner.textColor }} aria-hidden="true">
           <Icon name={banner.icon} size={38} strokeWidth={2.4} />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: "1 1 180px", minWidth: "180px" }}>
           <div style={{ fontSize: "1.0rem", fontWeight: 700, color: banner.textColor }}>
             {banner.title}
           </div>
@@ -241,6 +242,7 @@ export function NavigationCard({ navigation, onSpeakGuidance, paused = false }) 
               : banner.subtitle}
           </div>
         </div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
         {guidance_speech && onSpeakGuidance && (
           <button
             type="button"
@@ -267,6 +269,7 @@ export function NavigationCard({ navigation, onSpeakGuidance, paused = false }) 
             </span>
           </button>
         )}
+        </div>
       </div>
 
       {/* ── Clear Explanation of What is Ahead and Why ── */}
