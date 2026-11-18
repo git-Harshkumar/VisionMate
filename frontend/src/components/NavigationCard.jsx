@@ -254,6 +254,19 @@ export function NavigationCard({ navigation, onSpeakGuidance, paused = false }) 
             </span>
           </button>
         )}
+        {displaySteps.length > 0 && onSpeakGuidance && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => onSpeakGuidance(displaySteps.join(" "))}
+            aria-label="Hear next steps aloud"
+            title="Hear next steps aloud"
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Icon name="list" size={14} /> Steps
+            </span>
+          </button>
+        )}
       </div>
 
       {/* ── Clear Explanation of What is Ahead and Why ── */}
