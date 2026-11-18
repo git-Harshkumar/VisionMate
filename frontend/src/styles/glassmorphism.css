@@ -25,17 +25,17 @@
   --focus-ring: 0 0 0 3px #101729, 0 0 0 6px #c3b7ff;
 }
 body {
-  background: radial-gradient(ellipse at 5% 8%, #514278 0, transparent 43%), radial-gradient(ellipse at 97% 28%, #164b5e 0, transparent 45%), radial-gradient(ellipse at 45% 100%, #333b71 0, transparent 48%), #101729;
+  background: #141922;
   background-attachment: fixed;
 }
 .app-container { max-width: 1380px; padding: 36px 28px; }
 .app-container > header { padding-bottom: 24px !important; border: 0 !important; }
-.gradient-text { background: linear-gradient(105deg, #e9e2ff, #a2e6ed); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1.5px; }
+.gradient-text { background: none; color: #edf2fa; -webkit-text-fill-color: currentColor; letter-spacing: -1.5px; }
 h3 { font-size: 1.08rem; }
 .main-layout { gap: 26px; }
 .column-stack { gap: 22px; min-width: 0; }
 .card, .voice-status-bar {
-  background: linear-gradient(125deg, rgba(255,255,255,.065), transparent 65%), rgba(24, 35, 57, .78);
+  background: rgba(202, 217, 240, .055);
   backdrop-filter: blur(24px) saturate(140%);
   -webkit-backdrop-filter: blur(24px) saturate(140%);
   border: 1px solid rgba(225,235,255,.23);
@@ -43,11 +43,11 @@ h3 { font-size: 1.08rem; }
   box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 16px 40px rgba(4,11,28,.24);
 }
 .card { padding: 24px !important; }
-.card:hover { background: linear-gradient(125deg, rgba(255,255,255,.075), transparent 65%), rgba(24,35,57,.82); border-color: rgba(225,235,255,.3); }
+.card:hover { background: rgba(202,217,240,.075); border-color: rgba(225,235,255,.3); }
 .card[role='status'] { padding: 16px 22px !important; border-radius: 20px; }
-.voice-status-bar { background: rgba(24,35,57,.75) !important; border: 1px solid rgba(225,235,255,.23) !important; border-radius: 18px !important; color: var(--text-secondary); }
+.voice-status-bar { background: rgba(202,217,240,.055) !important; border: 1px solid rgba(225,235,255,.23) !important; border-radius: 18px !important; color: var(--text-secondary); }
 .voice-status-bar span[style*='color: rgb(244'], .voice-status-bar span[style*='color: rgb(248'] { color: #ffafc3 !important; }
-.camera-preview-wrapper { border: 1px solid rgba(219,232,255,.3); border-radius: 24px; background: linear-gradient(135deg, #17263d, #141b2e); box-shadow: 0 18px 48px #050b1e55, 0 0 0 5px #ffffff05; }
+.camera-preview-wrapper { border: 1px solid rgba(219,232,255,.3); border-radius: 24px; background: rgba(10,15,24,.46); box-shadow: 0 18px 48px #050b1e55, 0 0 0 5px #ffffff05; }
 .camera-idle-placeholder, .camera-idle-placeholder p { color: #cad6ea; opacity: 1; }
 .camera-idle-placeholder .idle-icon { opacity: .8; }
 .camera-idle-placeholder h2, .camera-idle-placeholder h3, .camera-idle-placeholder h4 { color: #f5f6ff !important; }
@@ -58,7 +58,7 @@ h3 { font-size: 1.08rem; }
   padding: 13px 18px; font-weight: 650; white-space: normal; line-height: 1.4;
   transition: background 140ms, border-color 140ms, transform 140ms;
 }
-.btn-primary, .read-text-btn { background: linear-gradient(110deg, rgba(186,160,255,.32), rgba(142,145,247,.22)); color: #faf5ff; border-color: #bca6f77a; }
+.btn-primary, .read-text-btn { background: rgba(202,210,231,.16); color: #faf5ff; border-color: #bca6f77a; }
 .btn-success { background: rgba(71,174,146,.21); color: #a6f4db; border-color: #81e6cf61; }
 .btn-warning { background: rgba(182,135,59,.2); color: #ffda9e; border-color: #ffd18e5c; }
 .btn-danger { background: rgba(192,86,119,.2); color: #ffb7ca; border-color: #ff9db65c; }
@@ -115,3 +115,6 @@ select { color: #edf0ff !important; background: #1e2a43 !important; border: 1px 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
 @media (prefers-reduced-transparency: reduce) { .card, .voice-status-bar { background: #1c2942 !important; backdrop-filter: none; -webkit-backdrop-filter: none; } }
 @media (forced-colors: active) { .card, .btn, .mode-btn, .read-text-btn, .speech-banner, .mode-btn-state::before, .mode-btn-state::after { border: 1px solid CanvasText !important; } }
+
+/* No decorative gradients: retain glass through transparency, blur and edge highlights. */
+.scan-overlay { background: rgba(220,230,250,.035); animation: none; }
