@@ -10,10 +10,12 @@ Purpose:
 - Generates natural, understandable audio guidance tailored for visually impaired mobility.
 - Explains WHAT is ahead, WHY to stop/maneuver, and gives NUMBERED next steps.
 - Handles closed doors and wall barriers explicitly.
-- Speaks guidance in the user's selected language. Spoken guidance is generated
-  deterministically from bilingual templates (English and Hindi), so safety-critical
-  warnings never wait on a cloud translation and never silently fall back to the
-  wrong language. On-screen explanations and next steps remain in English.
+- Speaks guidance in the user's selected language. Spoken guidance and the
+  numbered next steps are generated deterministically from bilingual templates
+  (English and Hindi), so safety-critical warnings never wait on a cloud
+  translation and never silently fall back to the wrong language. On-screen
+  explanations remain in English. Step wording avoids movement the camera
+  cannot verify (no fixed step counts or degree turns) and assumes no equipment.
 """
 
 from typing import List, Dict, Tuple, Optional
@@ -105,8 +107,8 @@ PROXIMITY_HI = {
 # English strings must stay identical to the original single-language output.
 _SPEECH_TEMPLATES: Dict[str, Tuple[str, str]] = {
     "empty_clear": (
-        "Path clear ahead. Walk forward slowly with your cane.",
-        "रास्ता साफ़ है। धीरे-धीरे आगे बढ़ें और छड़ी से जाँचते रहें।",
+        "No obstacles detected ahead. Move forward slowly and keep checking your path.",
+        "आगे कोई रुकावट नहीं दिख रही। धीरे-धीरे आगे बढ़ें और रास्ते की जाँच करते रहें।",
     ),
     "curtain_caution_right": (
         "Caution! Closed curtains directly ahead. Step to your right where the passage is open.",
@@ -117,8 +119,8 @@ _SPEECH_TEMPLATES: Dict[str, Tuple[str, str]] = {
         "सावधान! ठीक सामने बंद पर्दे हैं। बाईं ओर कदम बढ़ाएँ, वहाँ रास्ता खुला है।",
     ),
     "curtain_stop": (
-        "Stop immediately! Closed curtains directly in front of you. Stand still and probe ahead.",
-        "तुरंत रुकें! बिल्कुल सामने बंद पर्दे हैं। स्थिर खड़े रहें और छड़ी से आगे जाँचें।",
+        "Stop immediately! Closed curtains directly in front of you. Stand still and check your surroundings.",
+        "तुरंत रुकें! बिल्कुल सामने बंद पर्दे हैं। स्थिर खड़े रहें और आस-पास जाँचें।",
     ),
     "door_caution_right": (
         "Caution! Closed door directly ahead. Step to your right where the passage is open.",
@@ -129,8 +131,8 @@ _SPEECH_TEMPLATES: Dict[str, Tuple[str, str]] = {
         "सावधान! ठीक सामने बंद दरवाज़ा है। बाईं ओर कदम बढ़ाएँ, वहाँ रास्ता खुला है।",
     ),
     "door_stop": (
-        "Stop immediately! Closed door directly in front of you. Stand still and probe ahead.",
-        "तुरंत रुकें! बिल्कुल सामने बंद दरवाज़ा है। स्थिर खड़े रहें और आगे जाँचें।",
+        "Stop immediately! Closed door directly in front of you. Stand still and check your surroundings.",
+        "तुरंत रुकें! बिल्कुल सामने बंद दरवाज़ा है। स्थिर खड़े रहें और आस-पास जाँचें।",
     ),
     "urgent_veer_right": (
         "Caution! {obs_cap} is very close at your feet. Step to your right to go around it.",
@@ -149,8 +151,8 @@ _SPEECH_TEMPLATES: Dict[str, Tuple[str, str]] = {
         "सीधे आगे चलें। सावधान: {warnings}।",
     ),
     "straight_clear": (
-        "Path is clear ahead. Safe to walk straight forward.",
-        "आगे रास्ता साफ़ है। सीधे चलना सुरक्षित है।",
+        "No obstacles detected ahead. Move forward slowly and stay alert.",
+        "आगे कोई रुकावट नहीं दिख रही। धीरे-धीरे आगे बढ़ें और सतर्क रहें।",
     ),
     "veer_right_both_open": (
         "Step to your right. {obs_cap} is {prox} in your center path, but your right side is open.",
@@ -185,18 +187,91 @@ _SPEECH_TEMPLATES: Dict[str, Tuple[str, str]] = {
         "सावधानी से बाईं ओर बढ़ें। {obs} बीच के रास्ते में {prox} है, और बाईं ओर ज़्यादा जगह है।",
     ),
     "blocked_curtain": (
-        "Stop! Closed curtains directly ahead, blocking your path. Stand still and probe ahead with your cane.",
-        "रुकें! ठीक सामने बंद पर्दे रास्ता रोके हुए हैं। स्थिर खड़े रहें और छड़ी से आगे जाँचें।",
+        "Stop! Closed curtains directly ahead, blocking your path. Stand still and carefully check around you.",
+        "रुकें! ठीक सामने बंद पर्दे रास्ता रोके हुए हैं। स्थिर खड़े रहें और आस-पास ध्यान से जाँचें।",
     ),
     "blocked_door": (
-        "Stop! A closed door is directly ahead, blocking your path. Stand still and probe ahead.",
-        "रुकें! ठीक सामने बंद दरवाज़ा रास्ता रोके हुए है। स्थिर खड़े रहें और आगे जाँचें।",
+        "Stop! A closed door is directly ahead, blocking your path. Stand still and carefully check around you.",
+        "रुकें! ठीक सामने बंद दरवाज़ा रास्ता रोके हुए है। स्थिर खड़े रहें और आस-पास ध्यान से जाँचें।",
     ),
     "blocked_generic": (
-        "Stop! Path blocked in all directions by {obs_str}. Stand still and use your cane to find a way around.",
-        "रुकें! हर ओर रास्ता बंद है: {obs_str}। स्थिर खड़े रहें और छड़ी से निकलने का रास्ता खोजें।",
+        "Stop! Path blocked in all directions by {obs_str}. Stand still and slowly check for a clear way around.",
+        "रुकें! हर ओर रास्ता बंद है: {obs_str}। स्थिर खड़े रहें और निकलने का रास्ता धीरे-धीरे जाँचें।",
     ),
 }
+
+
+# ── Bilingual numbered next steps: key -> list of (English, Hindi) ──
+# Wording stays inside what the camera can support: directions and rough
+# proximity only. No fixed step counts, no degree turns, no cane assumptions.
+_STEP_TEMPLATES: Dict[str, List[Tuple[str, str]]] = {
+    "empty": [
+        ("Move forward slowly at a comfortable pace.",
+         "आराम से धीरे-धीरे आगे बढ़ें।"),
+        ("Keep checking the ground ahead as you go.",
+         "चलते समय आगे की जाँच करते रहें।"),
+    ],
+    "straight_guard": [
+        ("Walk forward slowly in the center.",
+         "बीच में धीरे-धीरे आगे चलें।"),
+        ("Keep checking the ground and your sides as you move.",
+         "चलते समय नीचे और अपने दोनों ओर जाँच करते रहें।"),
+    ],
+    "straight_clear": [
+        ("Move forward slowly.",
+         "धीरे-धीरे आगे बढ़ें।"),
+        ("Keep checking the path ahead as you go.",
+         "चलते समय आगे के रास्ते की जाँच करते रहें।"),
+    ],
+    "veer_right": [
+        ("Shift carefully to your right.",
+         "सावधानी से दाईं ओर हटें।"),
+        ("Check the space ahead on your right before moving forward.",
+         "आगे बढ़ने से पहले दाईं ओर की जगह जाँचें।"),
+        ("Then move forward slowly.",
+         "फिर धीरे-धीरे आगे बढ़ें।"),
+    ],
+    "veer_left": [
+        ("Shift carefully to your left.",
+         "सावधानी से बाईं ओर हटें।"),
+        ("Check the space ahead on your left before moving forward.",
+         "आगे बढ़ने से पहले बाईं ओर की जगह जाँचें।"),
+        ("Then move forward slowly.",
+         "फिर धीरे-धीरे आगे बढ़ें।"),
+    ],
+    "narrow_right": [
+        ("Move slowly toward your right.",
+         "धीरे-धीरे दाईं ओर बढ़ें।"),
+        ("Check the passage carefully before each step.",
+         "हर कदम से पहले रास्ता ध्यान से जाँचें।"),
+        ("Proceed slowly and stop if the space closes in.",
+         "धीरे-धीरे आगे बढ़ें और जगह तंग लगे तो रुक जाएँ।"),
+    ],
+    "narrow_left": [
+        ("Move slowly toward your left.",
+         "धीरे-धीरे बाईं ओर बढ़ें।"),
+        ("Check the passage carefully before each step.",
+         "हर कदम से पहले रास्ता ध्यान से जाँचें।"),
+        ("Proceed slowly and stop if the space closes in.",
+         "धीरे-धीरे आगे बढ़ें और जगह तंग लगे तो रुक जाएँ।"),
+    ],
+    "stop_recovery": [
+        ("Stop and stand still.",
+         "रुकें और स्थिर खड़े रहें।"),
+        ("Carefully check the space directly in front of you.",
+         "अपने ठीक सामने की जगह ध्यान से जाँचें।"),
+        ("Check slowly to your right and left for an opening.",
+         "दाईं और बाईं ओर धीरे-धीरे खुली जगह जाँचें।"),
+        ("If no side opens up, carefully move back and reassess.",
+         "अगर कोई ओर खुली न मिले, तो ध्यान से पीछे हटें और फिर से जाँचें।"),
+    ],
+}
+
+
+def _steps(key: str, language: str) -> List[str]:
+    """Renders the numbered next steps in the requested language."""
+    idx = 1 if language == "hi" else 0
+    return [pair[idx] for pair in _STEP_TEMPLATES[key]]
 
 
 def _normalize_language(language: Optional[str]) -> str:
@@ -262,8 +337,8 @@ class NavigationEngine:
         """
         Analyzes detected objects, checks corridor clearances, and produces
         actionable navigation directions with clear explanations and next steps.
-        Spoken guidance (guidance_speech) is rendered in the requested language
-        ("en" or "hi"); explanations and next steps stay in English.
+        Spoken guidance (guidance_speech) and next steps are rendered in the
+        requested language ("en" or "hi"); on-screen explanations stay in English.
         """
         language = _normalize_language(language)
         w = max(1, frame_width)
@@ -288,11 +363,8 @@ class NavigationEngine:
                 corridors=empty_corridors,
                 urgent_hazard=None,
                 primary_obstacle=None,
-                obstacle_explanation="No objects detected ahead. Path appears visually open. Use your cane to check for steps, closed doors, or walls.",
-                next_steps=[
-                    "Walk forward at a calm, comfortable pace.",
-                    "Keep sweeping your cane side to side at ground level."
-                ]
+                obstacle_explanation="No objects detected ahead. Path appears visually open, but the camera can miss low, thin or transparent objects - keep checking your path as you move.",
+                next_steps=_steps("empty", language)
             )
 
         corridor_bounds = {
@@ -408,7 +480,7 @@ class NavigationEngine:
         """
         Determines the safest maneuver, concise speech, detailed explanation of WHAT and WHY,
         and actionable numbered next steps for the blind user. Spoken guidance follows the
-        requested language; explanations and next steps remain English for the on-screen card.
+        requested language; explanations remain English for the on-screen card.
         """
         center = corridors["center"]
         left = corridors["left"]
@@ -435,21 +507,21 @@ class NavigationEngine:
                         NavigationAction.VEER_RIGHT, "right",
                         _speech("curtain_caution_right", language),
                         "Closed curtains are blocking your center path very close ahead. The right side is clear.",
-                        ["Step one or two paces to your right.", "Sweep your cane on your right side to confirm the opening.", "Proceed forward slowly."]
+                        _steps("veer_right", language)
                     )
                 elif left.status == CorridorStatus.CLEAR:
                     return (
                         NavigationAction.VEER_LEFT, "left",
                         _speech("curtain_caution_left", language),
                         "Closed curtains are blocking your center path very close ahead. The left side is clear.",
-                        ["Step one or two paces to your left.", "Sweep your cane on your left side to confirm the opening.", "Proceed forward slowly."]
+                        _steps("veer_left", language)
                     )
                 else:
                     return (
                         NavigationAction.STOP, "none",
                         _speech("curtain_stop", language),
                         "Closed curtains are right in front of you blocking your entire forward path. You cannot move straight.",
-                        ["Stop walking immediately.", "Reach forward or use your cane to touch the curtain fabric.", "Turn slowly 90 degrees right or left to check for an open corridor.", "If both sides remain blocked, take two steps backward."]
+                        _steps("stop_recovery", language)
                     )
 
             if is_door:
@@ -459,21 +531,21 @@ class NavigationEngine:
                         NavigationAction.VEER_RIGHT, "right",
                         _speech("door_caution_right", language),
                         "A closed door is blocking your center path very close ahead. The right side is clear.",
-                        ["Step one or two paces to your right.", "Sweep your cane on your right side to confirm the opening.", "Proceed forward slowly."]
+                        _steps("veer_right", language)
                     )
                 elif left.status == CorridorStatus.CLEAR:
                     return (
                         NavigationAction.VEER_LEFT, "left",
                         _speech("door_caution_left", language),
                         "A closed door is blocking your center path very close ahead. The left side is clear.",
-                        ["Step one or two paces to your left.", "Sweep your cane on your left side to confirm the opening.", "Proceed forward slowly."]
+                        _steps("veer_left", language)
                     )
                 else:
                     return (
                         NavigationAction.STOP, "none",
                         _speech("door_stop", language),
                         "A closed door or wall is right in front of you blocking your entire forward path. You cannot move straight.",
-                        ["Stop walking immediately.", "Reach forward or use your cane to locate the door handle or surface.", "Turn slowly 90 degrees right or left to check for an open corridor.", "If both sides remain blocked, take two steps backward."]
+                        _steps("stop_recovery", language)
                     )
 
             # Normal urgent obstacle (person, chair, pet, etc.)
@@ -482,21 +554,21 @@ class NavigationEngine:
                     NavigationAction.VEER_RIGHT, "right",
                     _speech("urgent_veer_right", language, obs=obs, obs_cap=obs_cap),
                     f"{obs_cap} is directly in your center path at foot level. Your right side has plenty of room.",
-                    ["Take one or two steps to your right.", "Sweep your cane ahead on the right to confirm the walkway.", "Continue walking forward."]
+                    _steps("veer_right", language)
                 )
             elif left.status == CorridorStatus.CLEAR:
                 return (
                     NavigationAction.VEER_LEFT, "left",
                     _speech("urgent_veer_left", language, obs=obs, obs_cap=obs_cap),
                     f"{obs_cap} is directly in your center path at foot level. Your left side has plenty of room.",
-                    ["Take one or two steps to your left.", "Sweep your cane ahead on the left to confirm the walkway.", "Continue walking forward."]
+                    _steps("veer_left", language)
                 )
             else:
                 return (
                     NavigationAction.STOP, "none",
                     _speech("urgent_stop", language, obs=obs, obs_cap=obs_cap),
                     f"{obs_cap} is blocking your path at foot level, and neither the left nor right side is clear to pass.",
-                    ["Stop immediately and stand still.", "Use your cane to probe the space directly in front of your feet.", "Turn slowly to your right or left to locate a clear exit.", "Take two steps backward if space is tight."]
+                    _steps("stop_recovery", language)
                 )
 
         # ── 2. CENTER CORRIDOR CLEAR — WALK STRAIGHT WITH SIDE CAUTIONS ──
@@ -532,17 +604,11 @@ class NavigationEngine:
 
             if side_warnings:
                 speech = _speech("straight_side_warnings", language, warnings=warnings_str)
-                steps = [
-                    "Walk straight forward in the center corridor.",
-                    "Keep your cane slightly sweeping forward to guard your sides."
-                ]
+                steps = _steps("straight_guard", language)
             else:
                 speech = _speech("straight_clear", language)
                 explanation = "All forward and side corridors appear open with no obstacles detected."
-                steps = [
-                    "Walk forward comfortably at normal walking speed.",
-                    "Continue scanning ground level with your cane."
-                ]
+                steps = _steps("straight_clear", language)
             return NavigationAction.STRAIGHT, "center", speech, explanation, steps
 
         # ── 3. CENTER BLOCKED OR CAUTION — FIND BEST SAFE SIDE ──
@@ -558,14 +624,14 @@ class NavigationEngine:
                     NavigationAction.VEER_RIGHT, "right",
                     _speech("veer_right_both_open", language, obs=obs, obs_cap=obs_cap, prox=prox),
                     f"{obs_cap} is {primary_proximity} blocking your center path. Both sides are passable, with more clearance on the right.",
-                    ["Take one or two steps to your right.", "Sweep your cane forward on the right to confirm the corridor.", "Proceed forward safely."]
+                    _steps("veer_right", language)
                 )
             else:
                 return (
                     NavigationAction.VEER_LEFT, "left",
                     _speech("veer_left_both_open", language, obs=obs, obs_cap=obs_cap, prox=prox),
                     f"{obs_cap} is {primary_proximity} blocking your center path. Both sides are passable, with more clearance on the left.",
-                    ["Take one or two steps to your left.", "Sweep your cane forward on the left to confirm the corridor.", "Proceed forward safely."]
+                    _steps("veer_left", language)
                 )
 
         # Right side clear, left side blocked
@@ -574,7 +640,7 @@ class NavigationEngine:
                 NavigationAction.VEER_RIGHT, "right",
                 _speech("veer_right_only", language, obs=obs, obs_cap=obs_cap, prox=prox),
                 f"Forward path is blocked by {obs} {primary_proximity}. Your left side is also blocked, but the right corridor is clear to walk.",
-                ["Step to your right side.", "Verify the right path with your cane.", "Walk forward around the obstacle."]
+                _steps("veer_right", language)
             )
 
         # Left side clear, right side blocked
@@ -583,7 +649,7 @@ class NavigationEngine:
                 NavigationAction.VEER_LEFT, "left",
                 _speech("veer_left_only", language, obs=obs, obs_cap=obs_cap, prox=prox),
                 f"Forward path is blocked by {obs} {primary_proximity}. Your right side is also blocked, but the left corridor is clear to walk.",
-                ["Step to your left side.", "Verify the left path with your cane.", "Walk forward around the obstacle."]
+                _steps("veer_left", language)
             )
 
         # Right side narrow but passable
@@ -592,7 +658,7 @@ class NavigationEngine:
                 NavigationAction.VEER_RIGHT, "right",
                 _speech("narrow_right", language, obs=obs, obs_cap=obs_cap, prox=prox),
                 f"Center path is blocked by {obs} {primary_proximity}. The right side has a narrow but passable space.",
-                ["Move slowly toward your right.", "Use your cane to feel the boundaries of the narrow passage.", "Proceed cautiously."]
+                _steps("narrow_right", language)
             )
 
         # Left side narrow but passable
@@ -601,7 +667,7 @@ class NavigationEngine:
                 NavigationAction.VEER_LEFT, "left",
                 _speech("narrow_left", language, obs=obs, obs_cap=obs_cap, prox=prox),
                 f"Center path is blocked by {obs} {primary_proximity}. The left side has a narrow but passable space.",
-                ["Move slowly toward your left.", "Use your cane to feel the boundaries of the narrow passage.", "Proceed cautiously."]
+                _steps("narrow_left", language)
             )
 
         # Both sides somewhat tight, pick better one
@@ -611,14 +677,14 @@ class NavigationEngine:
                     NavigationAction.VEER_RIGHT, "right",
                     _speech("better_right", language, obs=obs, obs_cap=obs_cap, prox=prox),
                     f"Center path is blocked by {obs} {primary_proximity}. The right corridor provides the best available clearance.",
-                    ["Step carefully toward your right.", "Feel the space with your cane before stepping forward."]
+                    _steps("narrow_right", language)
                 )
             else:
                 return (
                     NavigationAction.VEER_LEFT, "left",
                     _speech("better_left", language, obs=obs, obs_cap=obs_cap, prox=prox),
                     f"Center path is blocked by {obs} {primary_proximity}. The left corridor provides the best available clearance.",
-                    ["Step carefully toward your left.", "Feel the space with your cane before stepping forward."]
+                    _steps("narrow_left", language)
                 )
 
         # ── 4. ALL CORRIDORS BLOCKED — STOP & ACTIONABLE MULTI-STEP GUIDANCE ──
@@ -632,29 +698,14 @@ class NavigationEngine:
         if is_curtain or any("curtain" in o for o in all_obs):
             speech = _speech("blocked_curtain", language)
             explanation = "Closed curtains or drapes are blocking your entire forward path. There is no open passage ahead."
-            steps = [
-                "Stop walking immediately and stand still.",
-                "Reach forward or use your cane to touch the curtain fabric.",
-                "Slowly turn 90 degrees to your right or left to check if the path continues around the window.",
-                "If both sides remain blocked, take two steps backward."
-            ]
+            steps = _steps("stop_recovery", language)
         elif is_door or any("door" in o or "wall" in o for o in all_obs):
             speech = _speech("blocked_door", language)
             explanation = "A closed door or wall barrier is blocking your entire forward path. There is no open passage to walk through."
-            steps = [
-                "Stop walking immediately and stand still.",
-                "Reach forward or use your cane to locate the door frame and handle.",
-                "Slowly turn 90 degrees to your right or left to check if the hallway continues.",
-                "If no exit is found, take two steps backward."
-            ]
+            steps = _steps("stop_recovery", language)
         else:
             speech = _speech("blocked_generic", language, obs_str=obs_str)
             explanation = f"Your forward path and both sides are completely blocked by {obs_str}. Stopping is necessary to prevent a collision."
-            steps = [
-                "Stop moving immediately and stand still.",
-                "Use your cane to sweep the space directly in front of you.",
-                "Slowly turn 90 degrees to your right to check if a corridor opens up.",
-                "If still blocked, turn to your left or carefully take two steps backward."
-            ]
+            steps = _steps("stop_recovery", language)
 
         return NavigationAction.STOP, "none", speech, explanation, steps
