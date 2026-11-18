@@ -41,6 +41,7 @@ const FIXED_STRINGS_HI = new Map([
   ["Tilt camera up slightly", "कैमरा थोड़ा ऊपर करें"],
   ["Tilt camera down slightly", "कैमरा थोड़ा नीचे करें"],
   ["Hold phone upright", "फ़ोन सीधा पकड़ें"],
+  ["No guidance steps right now.", "अभी कोई दिशा-निर्देश उपलब्ध नहीं है।"],
   ["Speech language set to Hindi.", "भाषा हिन्दी चुनी गई।"],
   ["Speech language set to English.", "भाषा अंग्रेज़ी चुनी गई।"],
 ]);
