@@ -1,4 +1,4 @@
-/* VisionMate clay theme. Visual layer only; perception and reading logic unchanged. */
+/* VisionMate clay theme. Visual layer only; perception and reading logic unchanged. No decorative gradients, per the approved no-gradient preference. */
 :root {
   color-scheme: light;
   --accent-primary: #6350a5;
@@ -25,7 +25,7 @@
   --focus-ring: 0 0 0 3px #fff, 0 0 0 6px #6350a5;
 }
 body {
-  background: radial-gradient(ellipse at 8% 0%, #f5e4ee 0, transparent 50%), radial-gradient(ellipse at 98% 18%, #d9e7f3 0, transparent 50%), #e8e6f4;
+  background: #e8e6f4;
 }
 .app-container { max-width: 1380px; padding: 36px 28px; }
 .app-container > header { padding-bottom: 26px !important; border: 0 !important; }
@@ -51,7 +51,7 @@ h3 { font-size: 1.08rem; }
 .voice-status-bar span[style*='color: rgb(226'], .voice-status-bar span[style*='color: rgb(148'] { color: #504c69 !important; }
 .voice-status-bar span[style*='color: rgb(76'], .voice-status-bar span[style*='color: rgb(165'] { color: #365d92 !important; }
 .camera-preview-wrapper {
-  background: radial-gradient(ellipse at 30% 20%, #45415f, #25283f);
+  background: #2b2942;
   border: 10px solid #e9e5f4;
   border-radius: 30px;
   box-shadow: inset 3px 3px 10px #10132766, inset -2px -2px 4px #76719255, 9px 11px 23px #b5accb75, -5px -5px 14px #ffffffad;
@@ -118,6 +118,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .detection-item.priority { border-color: #debe91; }
 .confidence-bar-wrap { height: 6px; background: #cfc5df; border-radius: 5px; box-shadow: inset 1px 2px 3px #9684b255; }
 .confidence-bar { background: #6d9d88; border-radius: 5px; }
+.scan-overlay { background: #ffffff05; animation: none; }
 .error-message { color: #9d2d48; background: #f4d6df; border-color: #ffe9f0; border-radius: 18px; box-shadow: inset 3px 3px 6px #fff7, inset -3px -3px 6px #d6a8b966; }
 .card div[style*='minmax(130px'] > div { background: #e4e1f2 !important; border-radius: 16px !important; box-shadow: inset 3px 3px 5px #fff9, inset -3px -3px 6px #bfb6d770; }
 kbd { color: #54466f !important; background: #e5ddf1 !important; border: 1px solid #faf5ff; border-radius: 5px; box-shadow: inset 1px 1px 2px #fff, 1px 2px 2px #b4a5cc; padding: 1px 4px; }
