@@ -38,7 +38,8 @@ import { ReadTextButton } from "./components/ReadTextButton";
 import { MetricsCard } from "./components/MetricsCard";
 import { VoiceStatusPill } from "./components/VoiceStatusPill";
 
-const THROTTLE_MS = 2500; // 2.5s interval — slower than 1.6s to prevent contradictory rapid-fire guidance
+const THROTTLE_MS = 900; // Minimum start-to-start gap; never overlap requests.
+const MAX_FRAME_AGE_MS = 5000; // Discard old guidance, not a navigation safety guarantee.
 
 export default function App() {
   // Camera & Audio Hooks
@@ -60,7 +61,6 @@ export default function App() {
     cancel: cancelSpeech,
     repeat: repeatSpeech,
     isSpeaking,
-    isSpeakingRef,
     lastText: lastSpokenText,
   } = useSpeech({ rate: 0.95, pitch: 1.0 });
 
@@ -99,7 +99,11 @@ export default function App() {
 
   // Ref to track processing to avoid race conditions in setInterval/timeout
   const processingRef = useRef(false);
-  processingRef.current = isProcessing;
+  const inspectionControllerRef = useRef(null);
+  const inspectionEpochRef = useRef(0);
+  const readingBusyRef = useRef(false);
+  const readingRequestRef = useRef(0);
+  const targetAnnouncementRef = useRef("");
 
   const audioMutedRef = useRef(audioMuted);
   audioMutedRef.current = audioMuted;
@@ -110,16 +114,8 @@ export default function App() {
   const isReadingModeRef = useRef(isReadingMode);
   isReadingModeRef.current = isReadingMode;
 
-  const lastNavActionRef = useRef(null);
-  const lastNavSpeechTimeRef = useRef(0);
-  const stopSpokenCountRef = useRef(0); // Track how many times stop/hazard was announced for current obstacle
-
-  // Navigation temporal smoothing: ring buffer of last N actions to require consistency
-  // before speaking. Prevents "move forward" → "stop" flip-flop between frames.
-  const NAV_HISTORY_SIZE = 3;
-  const NAV_CONSISTENCY_THRESHOLD = 2; // action must appear this many times in history
-  const NAV_SPEECH_COOLDOWN_MS = 6000; // minimum gap between nav announcements
-  const navActionHistoryRef = useRef([]);
+  const navAnnouncementRef = useRef({ key: "", time: 0, count: 0 });
+  const navCandidateRef = useRef({ key: "", count: 0 });
 
   // 1. Initial Health Check
   useEffect(() => {
@@ -144,6 +140,15 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!latestInspection || !isStreaming) return;
+    const timer = setTimeout(() => {
+      setLatestInspection(null);
+      setAnnotatedImage(null);
+    }, MAX_FRAME_AGE_MS);
+    return () => clearTimeout(timer);
+  }, [latestInspection, isStreaming]);
+
   // Sync camera errors to user message
   useEffect(() => {
     if (cameraError) {
@@ -155,16 +160,27 @@ export default function App() {
    * Process a single frame through the inspection pipeline.
    */
   const processFrame = useCallback(
-    async (frameDataUri) => {
+    async (frameDataUri, { automatic = false } = {}) => {
       if (!frameDataUri || processingRef.current) return;
 
+      processingRef.current = true;
+      const controller = new AbortController();
+      inspectionControllerRef.current = controller;
+      const epoch = inspectionEpochRef.current;
       setIsProcessing(true);
       setErrorMessage(null);
       const startTime = performance.now();
 
       try {
-        const response = await inspectFrame(frameDataUri, showAnnotated);
+        const response = await inspectFrame(frameDataUri, showAnnotated, controller.signal);
+        if (epoch !== inspectionEpochRef.current || controller.signal.aborted) return;
         const elapsed = performance.now() - startTime;
+        if (automatic && elapsed > MAX_FRAME_AGE_MS) {
+          setLatestInspection(null);
+          setAnnotatedImage(null);
+          setErrorMessage("Analysis is too slow for current guidance. Keep still and inspect again; do not rely on an old frame.");
+          return;
+        }
         setTotalLatencyMs(elapsed);
         setLatestInspection(response);
         setFrameCount((prev) => prev + 1);
@@ -173,115 +189,61 @@ export default function App() {
           setAnnotatedImage(response.annotated_image || response.annotated_image_base64);
         }
 
-        // Targeted Item Search Mode Check
-        const detectedList = response.detections || response.prioritized_detections || response.detected_objects;
-        if (targetObjectRef.current && detectedList) {
-          const target = targetObjectRef.current.toLowerCase();
-          const match = detectedList.find((obj) =>
-            obj.label.toLowerCase().includes(target)
-          );
-          if (match) {
-            playDirectionalChime("clear");
-            if (!audioMutedRef.current) {
-              const pos = match.position || match.spatial_position || "in front";
-              speak(`Found ${match.label} ${pos}.`);
-            }
-          }
-        }
-
-        // Voice & Spatial Audio Guidance Logic (Suppressed while in Reading Mode!)
-        if (!audioMutedRef.current && !isReadingModeRef.current) {
-          if (navigationModeRef.current && response.navigation) {
-            const nav = response.navigation;
+        const detectedList = response.detections || response.prioritized_detections || [];
+        const nav = response.navigation;
+        const urgent = !!nav?.urgent_hazard || nav?.action === "stop";
+        const protectedReading = readingBusyRef.current || isReadingModeRef.current;
+        if (!audioMutedRef.current && !protectedReading) {
+          if (navigationModeRef.current && nav) {
+            // Include the hazard identity, not just the maneuver: a new obstacle
+            // must not be hidden by suppression of an unchanged turn/stop.
+            const key = JSON.stringify([nav.action, nav.primary_obstacle, nav.urgent_hazard, ...Object.entries(nav.corridors || {}).map(([zone, detail]) => [zone, [...(detail.obstacles || [])].sort()])]);
+            const candidate = navCandidateRef.current;
+            navCandidateRef.current = { key, count: candidate.key === key ? candidate.count + 1 : 1 };
+            const previous = navAnnouncementRef.current;
             const now = Date.now();
-
-            // ── Temporal smoothing: push to ring buffer ──
-            const history = navActionHistoryRef.current;
-            history.push(nav.action);
-            if (history.length > NAV_HISTORY_SIZE) history.shift();
-
-            // Count how many of the last N frames agree on this action
-            const actionCount = history.filter((a) => a === nav.action).length;
-            const isConsistent = actionCount >= NAV_CONSISTENCY_THRESHOLD;
-            const actionChanged = nav.action !== lastNavActionRef.current;
-            const isUrgent = !!nav.urgent_hazard;
-            const isStraightWalk = nav.action === "straight" || nav.action === "clear";
-            const isStopped = nav.action === "stop";
-            const periodicGap = isStraightWalk ? 20000 : NAV_SPEECH_COOLDOWN_MS;
-            const cooldownPassed = now - lastNavSpeechTimeRef.current > periodicGap;
-
-            // Reset stop count whenever action changes away from stop
-            if (actionChanged && !isStopped) {
-              stopSpokenCountRef.current = 0;
-            }
-
-            // Policy:
-            // 1. If action changed, speak immediately.
-            // 2. If 'stop', ONLY announce up to 2 times total for the same obstacle!
-            //    Do NOT keep repeating in an endless loop while the user stands still.
-            let shouldSpeak = false;
-
-            if (actionChanged && isConsistent) {
-              shouldSpeak = true;
-            } else if (isStopped) {
-              // Only repeat warning a second time if at least 7 seconds passed and count < 2
-              if (stopSpokenCountRef.current < 2 && (now - lastNavSpeechTimeRef.current > 7000)) {
-                shouldSpeak = true;
+            const changed = key !== previous.key;
+            const settled = navCandidateRef.current.count >= 2;
+            // New hazards are immediate. Ordinary maneuver changes need two
+            // agreeing fresh frames. Only hazards get a bounded reminder.
+            if ((changed && (urgent || settled)) ||
+                (urgent && !changed && previous.count < 2 && now - previous.time >= 20000)) {
+              const spoken = speak(nav.guidance_speech || "Obstacle detected. Stop and check your surroundings.", {
+                automatic: true, priority: urgent, dedupeKey: key,
+              });
+              if (spoken) {
+                playDirectionalChime(nav.action);
+                navAnnouncementRef.current = { key, time: now, count: changed ? 1 : previous.count + 1 };
               }
-            } else if (cooldownPassed && isConsistent && !isStraightWalk) {
-              shouldSpeak = true;
             }
-
-            if (shouldSpeak) {
-              playDirectionalChime(nav.action);
-
-              let spokenGuidance = nav.guidance_speech || "";
-
-              if (isStopped) {
-                stopSpokenCountRef.current += 1;
-
-                const leftScore = nav.corridors?.left?.clearance_score || 0;
-                const rightScore = nav.corridors?.right?.clearance_score || 0;
-
-                let nextMove = "";
-                if (rightScore > leftScore && rightScore > 0.35) {
-                  nextMove = "Turn to your right to find an open path.";
-                } else if (leftScore > 0.35) {
-                  nextMove = "Turn to your left to find an open path.";
-                } else {
-                  nextMove = "Take two steps back, then turn slowly to locate a clear exit.";
-                }
-
-                if (stopSpokenCountRef.current === 1) {
-                  spokenGuidance = `${spokenGuidance} Next: ${nextMove}`;
-                } else {
-                  // Second reminder is very short and directly tells them the action
-                  spokenGuidance = `Still blocked. ${nextMove}`;
-                }
+          } else if (response.new_announcements?.length) {
+            speak(response.new_announcements.join(". "), { automatic: true });
+          } else if (!Array.isArray(response.new_announcements)) {
+            // Legacy responses only. An empty list explicitly means silence.
+            speak(response.speech_text || response.announcement, { automatic: true });
+          }
+          if (targetObjectRef.current && !urgent) {
+            const match = detectedList.find(obj => obj.label.toLowerCase().includes(targetObjectRef.current.toLowerCase()));
+            if (match) {
+              const key = `${targetObjectRef.current}:${match.label}:${match.position || match.spatial_position || "in front"}`;
+              if (targetAnnouncementRef.current !== key &&
+                  speak(`Found ${match.label} ${match.position || match.spatial_position || "in front"}.`, { automatic: true })) {
+                targetAnnouncementRef.current = key;
+                playDirectionalChime("clear");
               }
-
-              speak(spokenGuidance);
-              lastNavActionRef.current = nav.action;
-              lastNavSpeechTimeRef.current = now;
-            }
-          } else {
-            // Scene Perception / Object Catalog announcement
-            if (
-              response.new_announcements &&
-              response.new_announcements.length > 0
-            ) {
-              const speechText = response.new_announcements.join(". ");
-              speak(speechText);
-            } else if (response.speech_text || response.announcement) {
-              speak(response.speech_text || response.announcement);
             }
           }
         }
       } catch (err) {
+        if (controller.signal.aborted || epoch !== inspectionEpochRef.current) return;
         console.error("Frame inspection failed:", err);
         setErrorMessage(`Inspection error: ${err.message}`);
       } finally {
-        setIsProcessing(false);
+        if (inspectionControllerRef.current === controller) {
+          processingRef.current = false;
+          inspectionControllerRef.current = null;
+          setIsProcessing(false);
+        }
       }
     },
     [showAnnotated, speak, playDirectionalChime]
@@ -306,6 +268,16 @@ export default function App() {
    */
   const handleToggleReadingMode = useCallback(() => {
     const next = !isReadingModeRef.current;
+    isReadingModeRef.current = next;
+    inspectionEpochRef.current += 1;
+    inspectionControllerRef.current?.abort();
+    navAnnouncementRef.current = { key: "", time: 0 };
+    navCandidateRef.current = { key: "", count: 0 };
+    setLatestInspection(null);
+    setAnnotatedImage(null);
+    readingRequestRef.current += 1;
+    readingBusyRef.current = false;
+    setOcrLoading(false);
     setIsReadingMode(next);
     if (next) {
       setOcrResult(null);
@@ -326,64 +298,57 @@ export default function App() {
       return;
     }
 
+    if (readingBusyRef.current) return;
+    readingBusyRef.current = true;
+    const request = ++readingRequestRef.current;
+    inspectionEpochRef.current += 1;
+    inspectionControllerRef.current?.abort();
+    setLatestInspection(null);
+    cancelSpeech();
+    setOcrResult(null);
+    setVlmReading(null);
     setOcrLoading(true);
     setErrorMessage(null);
-
-    try {
-      // Cloud VLM (rich item reading) and local EasyOCR run in parallel.
-      // Each is allowed to fail independently so one broken service never
-      // takes down the whole reading flow.
-      const [vlmRes, ocrRes] = await Promise.all([
-        askVLM(
-          frame,
-          "Read all text visible on this item accurately and describe what this object is and what it is all about. If text is mirrored or reversed by the webcam, read it correctly. If any text is cut off, give brief framing advice."
-        ).catch(() => null),
-        readTextFromFrame(frame).catch(() => null),
-      ]);
-
-      if (ocrRes) {
-        setOcrResult(ocrRes);
-      }
-
-      // Only trust the VLM answer when it is a real model response — not the
-      // offline rule fallback, an API-key error, or a network failure.
-      const vlmUsable =
-        vlmRes &&
-        vlmRes.success === true &&
-        vlmRes.spoken_response &&
-        !vlmRes.spoken_response.includes("GEMINI_API_KEY") &&
-        !(vlmRes.model_used || "").includes("Fallback") &&
-        !(vlmRes.model_used || "").includes("Error");
-
-      setVlmReading(vlmUsable ? vlmRes.spoken_response : null);
-
-      let textToSpeak = "";
-
-      if (vlmUsable) {
-        textToSpeak = vlmRes.spoken_response;
-      } else if (ocrRes && ocrRes.success) {
-        textToSpeak = ocrRes.speech_text || ocrRes.total_text;
-        if (ocrRes.framing_guidance && ocrRes.total_blocks_count > 0) {
-          textToSpeak = `${textToSpeak} ${ocrRes.framing_guidance}`;
-        }
-      } else if (ocrRes) {
-        // OCR endpoint answered but reported an internal failure
-        textToSpeak = "The text reader hit an error. Please try again in a moment.";
-      } else {
-        setErrorMessage("Text reading is unavailable. Please check that the backend server is running.");
-        return;
-      }
-
-      if (!audioMutedRef.current && textToSpeak) {
-        speak(textToSpeak);
-      }
-    } catch (err) {
-      console.error("OCR request failed:", err);
-      setErrorMessage(`OCR failed: ${err.message}`);
-    } finally {
+    let delivered = false;
+    let answered = false;
+    const deliver = (text, isCloud = false) => {
+      if (!text || delivered || request !== readingRequestRef.current) return;
+      delivered = true;
+      readingBusyRef.current = false;
+      if (isCloud) setVlmReading(text);
       setOcrLoading(false);
+      if (!audioMutedRef.current) speak(text);
+    };
+    try {
+      // Publish the first usable reading immediately. A slower cloud response
+      // must not delay local OCR or start a second, duplicate reading aloud.
+      await Promise.allSettled([
+        readTextFromFrame(frame).then(result => {
+          if (request !== readingRequestRef.current) return;
+          answered = true;
+          setOcrResult(result);
+          if (result.success && (result.total_text || result.full_text)) {
+            deliver(result.speech_text || result.total_text || result.full_text);
+          }
+        }),
+        askVLM(frame, "Read the visible text accurately. Do not guess missing text. Briefly identify the item and give framing advice if needed.").then(result => {
+          if (result?.success && !/Fallback|Error/i.test(result.model_used || "")) answered = true;
+          if (result?.success && !/Fallback|Error/i.test(result.model_used || "")) {
+            deliver(result.spoken_response, true);
+          }
+        }),
+      ]);
+      if (!delivered && request === readingRequestRef.current) {
+        if (!answered) setErrorMessage("Text reading is unavailable or timed out. Check the backend and try again.");
+        deliver(answered ? "No readable text was returned. Hold the text flat and well lit, then try again." : "The text reader is unavailable. Please try again.");
+      }
+    } finally {
+      if (request === readingRequestRef.current) {
+        readingBusyRef.current = false;
+        setOcrLoading(false);
+      }
     }
-  }, [captureFrame, sampleImage, speak]);
+  }, [captureFrame, sampleImage, speak, cancelSpeech]);
 
   /**
    * Tier 2 Multimodal VLM Conversational Query Trigger
@@ -423,7 +388,7 @@ export default function App() {
     isEnabled: isStreaming,
     onOrientationIssue: (issue) => {
       if (!audioMutedRef.current) {
-        speak(issue);
+        speak(issue, { automatic: true });
       }
     },
   });
@@ -452,6 +417,7 @@ export default function App() {
       handleAskVLM(userQuery || "Describe this scene concisely for a blind person navigating.");
     },
     onTargetSearch: (item) => {
+      targetAnnouncementRef.current = "";
       setTargetObject(item);
       speak(`Searching for ${item}. Move your camera around slowly.`);
     },
@@ -466,16 +432,26 @@ export default function App() {
     // and keep the navigation card churning with irrelevant updates.
     if (!isStreaming || !isInspecting || isReadingMode) return;
 
-    const timer = setInterval(() => {
-      if (!processingRef.current) {
+    let stopped = false;
+    let timer;
+    async function tick() {
+      const started = performance.now();
+      if (!processingRef.current && !readingBusyRef.current) {
         const frame = captureFrame();
-        if (frame) {
-          processFrame(frame);
-        }
+        if (frame) await processFrame(frame, { automatic: true });
       }
-    }, THROTTLE_MS);
-
-    return () => clearInterval(timer);
+      if (!stopped) timer = setTimeout(tick, Math.max(100, THROTTLE_MS - (performance.now() - started)));
+    }
+    tick(); // First frame now, not after a full interval.
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      inspectionEpochRef.current += 1;
+      inspectionControllerRef.current?.abort();
+      navCandidateRef.current = { key: "", count: 0 };
+      setLatestInspection(null);
+      setAnnotatedImage(null);
+    };
   }, [isStreaming, isInspecting, isReadingMode, captureFrame, processFrame]);
 
   /**
