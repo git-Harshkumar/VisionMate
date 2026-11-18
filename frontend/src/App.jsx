@@ -403,6 +403,8 @@ export default function App() {
     restartVoice,
   } = useVoiceCommands({
     isEnabled: true,
+    isSpeaking,
+    spokenText: lastSpokenText,
     onFeedback: (fb) => setVoiceFeedback(fb),
     onStopAudio: () => {
       cancelSpeech();
