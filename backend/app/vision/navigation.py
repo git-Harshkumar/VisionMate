@@ -111,80 +111,80 @@ _SPEECH_TEMPLATES: Dict[str, Tuple[str, str]] = {
         "आगे कोई रुकावट नहीं दिख रही। धीरे-धीरे आगे बढ़ें और रास्ते की जाँच करते रहें।",
     ),
     "curtain_caution_right": (
-        "Caution! Closed curtains directly ahead. Step to your right where the passage is open.",
-        "सावधान! ठीक सामने बंद पर्दे हैं। दाईं ओर कदम बढ़ाएँ, वहाँ रास्ता खुला है।",
+        "Caution! Closed curtains directly ahead. Your right side looks open - move carefully to your right.",
+        "सावधान! ठीक सामने बंद पर्दे हैं। दाईं ओर रास्ता खुला दिख रहा है - सावधानी से दाईं ओर बढ़ें।",
     ),
     "curtain_caution_left": (
-        "Caution! Closed curtains directly ahead. Step to your left where the passage is open.",
-        "सावधान! ठीक सामने बंद पर्दे हैं। बाईं ओर कदम बढ़ाएँ, वहाँ रास्ता खुला है।",
+        "Caution! Closed curtains directly ahead. Your left side looks open - move carefully to your left.",
+        "सावधान! ठीक सामने बंद पर्दे हैं। बाईं ओर रास्ता खुला दिख रहा है - सावधानी से बाईं ओर बढ़ें।",
     ),
     "curtain_stop": (
         "Stop immediately! Closed curtains directly in front of you. Stand still and check your surroundings.",
         "तुरंत रुकें! बिल्कुल सामने बंद पर्दे हैं। स्थिर खड़े रहें और आस-पास जाँचें।",
     ),
     "door_caution_right": (
-        "Caution! Closed door directly ahead. Step to your right where the passage is open.",
-        "सावधान! ठीक सामने बंद दरवाज़ा है। दाईं ओर कदम बढ़ाएँ, वहाँ रास्ता खुला है।",
+        "Caution! Closed door directly ahead. Your right side looks open - move carefully to your right.",
+        "सावधान! ठीक सामने बंद दरवाज़ा है। दाईं ओर रास्ता खुला दिख रहा है - सावधानी से दाईं ओर बढ़ें।",
     ),
     "door_caution_left": (
-        "Caution! Closed door directly ahead. Step to your left where the passage is open.",
-        "सावधान! ठीक सामने बंद दरवाज़ा है। बाईं ओर कदम बढ़ाएँ, वहाँ रास्ता खुला है।",
+        "Caution! Closed door directly ahead. Your left side looks open - move carefully to your left.",
+        "सावधान! ठीक सामने बंद दरवाज़ा है। बाईं ओर रास्ता खुला दिख रहा है - सावधानी से बाईं ओर बढ़ें।",
     ),
     "door_stop": (
         "Stop immediately! Closed door directly in front of you. Stand still and check your surroundings.",
         "तुरंत रुकें! बिल्कुल सामने बंद दरवाज़ा है। स्थिर खड़े रहें और आस-पास जाँचें।",
     ),
     "urgent_veer_right": (
-        "Caution! {obs_cap} is very close at your feet. Step to your right to go around it.",
-        "सावधान! {obs} आपके पैरों के बिल्कुल पास है। इससे बचने के लिए दाईं ओर कदम बढ़ाएँ।",
+        "Caution! {obs_cap} is very close at your feet. Your right looks open - move carefully to your right to go around it.",
+        "सावधान! {obs} आपके पैरों के बिल्कुल पास है। दाईं ओर रास्ता खुला दिख रहा है - इससे बचने के लिए सावधानी से दाईं ओर बढ़ें।",
     ),
     "urgent_veer_left": (
-        "Caution! {obs_cap} is very close at your feet. Step to your left to go around it.",
-        "सावधान! {obs} आपके पैरों के बिल्कुल पास है। इससे बचने के लिए बाईं ओर कदम बढ़ाएँ।",
+        "Caution! {obs_cap} is very close at your feet. Your left looks open - move carefully to your left to go around it.",
+        "सावधान! {obs} आपके पैरों के बिल्कुल पास है। बाईं ओर रास्ता खुला दिख रहा है - इससे बचने के लिए सावधानी से बाईं ओर बढ़ें।",
     ),
     "urgent_stop": (
         "Stop immediately! {obs_cap} is directly in front of your feet. Both sides are blocked. Stand still.",
         "तुरंत रुकें! {obs} बिल्कुल आपके पैरों के सामने है। दोनों ओर रास्ता बंद है। स्थिर खड़े रहें।",
     ),
     "straight_side_warnings": (
-        "Walk straight ahead. Caution: {warnings}.",
-        "सीधे आगे चलें। सावधान: {warnings}।",
+        "Center path looks clear. Move slowly and keep checking. Caution: {warnings}.",
+        "बीच का रास्ता साफ़ दिख रहा है। धीरे-धीरे चलें और जाँच करते रहें। सावधान: {warnings}।",
     ),
     "straight_clear": (
         "No obstacles detected ahead. Move forward slowly and stay alert.",
         "आगे कोई रुकावट नहीं दिख रही। धीरे-धीरे आगे बढ़ें और सतर्क रहें।",
     ),
     "veer_right_both_open": (
-        "Step to your right. {obs_cap} is {prox} in your center path, but your right side is open.",
-        "दाईं ओर कदम बढ़ाएँ। {obs} आपके सीधे रास्ते में {prox} है, लेकिन दाईं ओर रास्ता खुला है।",
+        "{obs_cap} is {prox} in your center path. Your right side looks more open - move carefully to your right, checking as you go.",
+        "{obs} आपके सीधे रास्ते में {prox} है। दाईं ओर ज़्यादा खुला दिख रहा है - जाँच करते हुए सावधानी से दाईं ओर बढ़ें।",
     ),
     "veer_left_both_open": (
-        "Step to your left. {obs_cap} is {prox} in your center path, but your left side is open.",
-        "बाईं ओर कदम बढ़ाएँ। {obs} आपके सीधे रास्ते में {prox} है, लेकिन बाईं ओर रास्ता खुला है।",
+        "{obs_cap} is {prox} in your center path. Your left side looks more open - move carefully to your left, checking as you go.",
+        "{obs} आपके सीधे रास्ते में {prox} है। बाईं ओर ज़्यादा खुला दिख रहा है - जाँच करते हुए सावधानी से बाईं ओर बढ़ें।",
     ),
     "veer_right_only": (
-        "Step to your right. {obs_cap} is {prox} blocking ahead, and your right side is clear.",
-        "दाईं ओर कदम बढ़ाएँ। {obs} {prox} आगे रास्ता रोके हुए है, और दाईं ओर रास्ता साफ़ है।",
+        "{obs_cap} is {prox} blocking ahead and your left side is blocked too. Your right side looks open - move carefully to your right, checking as you go.",
+        "{obs} {prox} आगे रास्ता रोके हुए है और बाईं ओर भी बंद है। दाईं ओर रास्ता खुला दिख रहा है - जाँच करते हुए सावधानी से दाईं ओर बढ़ें।",
     ),
     "veer_left_only": (
-        "Step to your left. {obs_cap} is {prox} blocking ahead, and your left side is clear.",
-        "बाईं ओर कदम बढ़ाएँ। {obs} {prox} आगे रास्ता रोके हुए है, और बाईं ओर रास्ता साफ़ है।",
+        "{obs_cap} is {prox} blocking ahead and your right side is blocked too. Your left side looks open - move carefully to your left, checking as you go.",
+        "{obs} {prox} आगे रास्ता रोके हुए है और दाईं ओर भी बंद है। बाईं ओर रास्ता खुला दिख रहा है - जाँच करते हुए सावधानी से बाईं ओर बढ़ें।",
     ),
     "narrow_right": (
-        "Move carefully to your right. {obs_cap} is {prox} blocking ahead. Narrow passage on the right.",
-        "सावधानी से दाईं ओर बढ़ें। {obs} {prox} रास्ता रोके हुए है। दाईं ओर तंग रास्ता है।",
+        "{obs_cap} is {prox} blocking ahead. The right side looks like a narrow passage - move very slowly to your right and stop if it closes in.",
+        "{obs} {prox} रास्ता रोके हुए है। दाईं ओर तंग रास्ता दिख रहा है - बहुत धीरे-धीरे दाईं ओर बढ़ें और जगह तंग लगे तो रुक जाएँ।",
     ),
     "narrow_left": (
-        "Move carefully to your left. {obs_cap} is {prox} blocking ahead. Narrow passage on the left.",
-        "सावधानी से बाईं ओर बढ़ें। {obs} {prox} रास्ता रोके हुए है। बाईं ओर तंग रास्ता है।",
+        "{obs_cap} is {prox} blocking ahead. The left side looks like a narrow passage - move very slowly to your left and stop if it closes in.",
+        "{obs} {prox} रास्ता रोके हुए है। बाईं ओर तंग रास्ता दिख रहा है - बहुत धीरे-धीरे बाईं ओर बढ़ें और जगह तंग लगे तो रुक जाएँ।",
     ),
     "better_right": (
-        "Move carefully to your right. {obs_cap} is {prox} blocking center, and the right side has more room.",
-        "सावधानी से दाईं ओर बढ़ें। {obs} बीच के रास्ते में {prox} है, और दाईं ओर ज़्यादा जगह है।",
+        "{obs_cap} is {prox} blocking center. The right side looks more open - move carefully to your right, checking as you go.",
+        "{obs} बीच के रास्ते में {prox} है। दाईं ओर ज़्यादा खुली जगह दिख रही है - जाँच करते हुए सावधानी से दाईं ओर बढ़ें।",
     ),
     "better_left": (
-        "Move carefully to your left. {obs_cap} is {prox} blocking center, and the left side has more room.",
-        "सावधानी से बाईं ओर बढ़ें। {obs} बीच के रास्ते में {prox} है, और बाईं ओर ज़्यादा जगह है।",
+        "{obs_cap} is {prox} blocking center. The left side looks more open - move carefully to your left, checking as you go.",
+        "{obs} बीच के रास्ते में {prox} है। बाईं ओर ज़्यादा खुली जगह दिख रही है - जाँच करते हुए सावधानी से बाईं ओर बढ़ें।",
     ),
     "blocked_curtain": (
         "Stop! Closed curtains directly ahead, blocking your path. Stand still and carefully check around you.",
@@ -224,36 +224,36 @@ _STEP_TEMPLATES: Dict[str, List[Tuple[str, str]]] = {
          "चलते समय आगे के रास्ते की जाँच करते रहें।"),
     ],
     "veer_right": [
-        ("Shift carefully to your right.",
-         "सावधानी से दाईं ओर हटें।"),
-        ("Check the space ahead on your right before moving forward.",
-         "आगे बढ़ने से पहले दाईं ओर की जगह जाँचें।"),
-        ("Then move forward slowly.",
-         "फिर धीरे-धीरे आगे बढ़ें।"),
+        ("Check the space to your right first.",
+         "पहले दाईं ओर की जगह जाँचें।"),
+        ("If it seems clear, shift carefully to your right.",
+         "साफ़ लगे तो सावधानी से दाईं ओर हटें।"),
+        ("Then move forward slowly, checking as you go.",
+         "फिर जाँच करते हुए धीरे-धीरे आगे बढ़ें।"),
     ],
     "veer_left": [
-        ("Shift carefully to your left.",
-         "सावधानी से बाईं ओर हटें।"),
-        ("Check the space ahead on your left before moving forward.",
-         "आगे बढ़ने से पहले बाईं ओर की जगह जाँचें।"),
-        ("Then move forward slowly.",
-         "फिर धीरे-धीरे आगे बढ़ें।"),
+        ("Check the space to your left first.",
+         "पहले बाईं ओर की जगह जाँचें।"),
+        ("If it seems clear, shift carefully to your left.",
+         "साफ़ लगे तो सावधानी से बाईं ओर हटें।"),
+        ("Then move forward slowly, checking as you go.",
+         "फिर जाँच करते हुए धीरे-धीरे आगे बढ़ें।"),
     ],
     "narrow_right": [
-        ("Move slowly toward your right.",
-         "धीरे-धीरे दाईं ओर बढ़ें।"),
-        ("Check the passage carefully before each step.",
-         "हर कदम से पहले रास्ता ध्यान से जाँचें।"),
-        ("Proceed slowly and stop if the space closes in.",
-         "धीरे-धीरे आगे बढ़ें और जगह तंग लगे तो रुक जाएँ।"),
+        ("Carefully check the narrow space on your right first.",
+         "पहले दाईं ओर की तंग जगह ध्यान से जाँचें।"),
+        ("If it seems passable, move slowly to your right.",
+         "निकलना संभव लगे तो धीरे-धीरे दाईं ओर बढ़ें।"),
+        ("Stop if the space closes in.",
+         "जगह तंग लगे तो रुक जाएँ।"),
     ],
     "narrow_left": [
-        ("Move slowly toward your left.",
-         "धीरे-धीरे बाईं ओर बढ़ें।"),
-        ("Check the passage carefully before each step.",
-         "हर कदम से पहले रास्ता ध्यान से जाँचें।"),
-        ("Proceed slowly and stop if the space closes in.",
-         "धीरे-धीरे आगे बढ़ें और जगह तंग लगे तो रुक जाएँ।"),
+        ("Carefully check the narrow space on your left first.",
+         "पहले बाईं ओर की तंग जगह ध्यान से जाँचें।"),
+        ("If it seems passable, move slowly to your left.",
+         "निकलना संभव लगे तो धीरे-धीरे बाईं ओर बढ़ें।"),
+        ("Stop if the space closes in.",
+         "जगह तंग लगे तो रुक जाएँ।"),
     ],
     "stop_recovery": [
         ("Stop and stand still.",
@@ -506,14 +506,14 @@ class NavigationEngine:
                     return (
                         NavigationAction.VEER_RIGHT, "right",
                         _speech("curtain_caution_right", language),
-                        "Closed curtains are blocking your center path very close ahead. The right side is clear.",
+                        "Closed curtains are blocking your center path very close ahead. The right side appears clear.",
                         _steps("veer_right", language)
                     )
                 elif left.status == CorridorStatus.CLEAR:
                     return (
                         NavigationAction.VEER_LEFT, "left",
                         _speech("curtain_caution_left", language),
-                        "Closed curtains are blocking your center path very close ahead. The left side is clear.",
+                        "Closed curtains are blocking your center path very close ahead. The left side appears clear.",
                         _steps("veer_left", language)
                     )
                 else:
@@ -530,14 +530,14 @@ class NavigationEngine:
                     return (
                         NavigationAction.VEER_RIGHT, "right",
                         _speech("door_caution_right", language),
-                        "A closed door is blocking your center path very close ahead. The right side is clear.",
+                        "A closed door is blocking your center path very close ahead. The right side appears clear.",
                         _steps("veer_right", language)
                     )
                 elif left.status == CorridorStatus.CLEAR:
                     return (
                         NavigationAction.VEER_LEFT, "left",
                         _speech("door_caution_left", language),
-                        "A closed door is blocking your center path very close ahead. The left side is clear.",
+                        "A closed door is blocking your center path very close ahead. The left side appears clear.",
                         _steps("veer_left", language)
                     )
                 else:
@@ -553,14 +553,14 @@ class NavigationEngine:
                 return (
                     NavigationAction.VEER_RIGHT, "right",
                     _speech("urgent_veer_right", language, obs=obs, obs_cap=obs_cap),
-                    f"{obs_cap} is directly in your center path at foot level. Your right side has plenty of room.",
+                    f"{obs_cap} is directly in your center path at foot level. Your right side appears clearer - check it as you move.",
                     _steps("veer_right", language)
                 )
             elif left.status == CorridorStatus.CLEAR:
                 return (
                     NavigationAction.VEER_LEFT, "left",
                     _speech("urgent_veer_left", language, obs=obs, obs_cap=obs_cap),
-                    f"{obs_cap} is directly in your center path at foot level. Your left side has plenty of room.",
+                    f"{obs_cap} is directly in your center path at foot level. Your left side appears clearer - check it as you move.",
                     _steps("veer_left", language)
                 )
             else:
@@ -586,7 +586,7 @@ class NavigationEngine:
                     side_warnings.append(f"दाईं ओर {_obstacle_name_hi(right.obstacles[0])}")
 
                 warnings_str = " और ".join(side_warnings)
-                explanation = f"Your center walking path is open, but be careful: obstacles on your sides ({warnings_str})."
+                explanation = f"Your center path appears open, but be careful: obstacles on your sides ({warnings_str})."
             else:
                 side_warnings = []
                 if left.status == CorridorStatus.BLOCKED and left.obstacles:
@@ -600,14 +600,14 @@ class NavigationEngine:
                     side_warnings.append(f"{_format_obstacle_name(right.obstacles[0])} on your right")
 
                 warnings_str = ", and ".join(side_warnings)
-                explanation = f"Your center walking path is open, but be careful: there is {warnings_str}."
+                explanation = f"Your center path appears open, but be careful: there is {warnings_str}."
 
             if side_warnings:
                 speech = _speech("straight_side_warnings", language, warnings=warnings_str)
                 steps = _steps("straight_guard", language)
             else:
                 speech = _speech("straight_clear", language)
-                explanation = "All forward and side corridors appear open with no obstacles detected."
+                explanation = "All forward and side corridors appear open with no obstacles detected. The camera can miss low, thin or transparent objects, so keep checking as you move."
                 steps = _steps("straight_clear", language)
             return NavigationAction.STRAIGHT, "center", speech, explanation, steps
 
@@ -623,14 +623,14 @@ class NavigationEngine:
                 return (
                     NavigationAction.VEER_RIGHT, "right",
                     _speech("veer_right_both_open", language, obs=obs, obs_cap=obs_cap, prox=prox),
-                    f"{obs_cap} is {primary_proximity} blocking your center path. Both sides are passable, with more clearance on the right.",
+                    f"{obs_cap} is {primary_proximity} blocking your center path. Both sides appear passable, with more clearance on the right.",
                     _steps("veer_right", language)
                 )
             else:
                 return (
                     NavigationAction.VEER_LEFT, "left",
                     _speech("veer_left_both_open", language, obs=obs, obs_cap=obs_cap, prox=prox),
-                    f"{obs_cap} is {primary_proximity} blocking your center path. Both sides are passable, with more clearance on the left.",
+                    f"{obs_cap} is {primary_proximity} blocking your center path. Both sides appear passable, with more clearance on the left.",
                     _steps("veer_left", language)
                 )
 
@@ -639,7 +639,7 @@ class NavigationEngine:
             return (
                 NavigationAction.VEER_RIGHT, "right",
                 _speech("veer_right_only", language, obs=obs, obs_cap=obs_cap, prox=prox),
-                f"Forward path is blocked by {obs} {primary_proximity}. Your left side is also blocked, but the right corridor is clear to walk.",
+                f"Forward path is blocked by {obs} {primary_proximity}. Your left side is also blocked, but the right corridor appears clear.",
                 _steps("veer_right", language)
             )
 
@@ -648,7 +648,7 @@ class NavigationEngine:
             return (
                 NavigationAction.VEER_LEFT, "left",
                 _speech("veer_left_only", language, obs=obs, obs_cap=obs_cap, prox=prox),
-                f"Forward path is blocked by {obs} {primary_proximity}. Your right side is also blocked, but the left corridor is clear to walk.",
+                f"Forward path is blocked by {obs} {primary_proximity}. Your right side is also blocked, but the left corridor appears clear.",
                 _steps("veer_left", language)
             )
 
@@ -657,7 +657,7 @@ class NavigationEngine:
             return (
                 NavigationAction.VEER_RIGHT, "right",
                 _speech("narrow_right", language, obs=obs, obs_cap=obs_cap, prox=prox),
-                f"Center path is blocked by {obs} {primary_proximity}. The right side has a narrow but passable space.",
+                f"Center path is blocked by {obs} {primary_proximity}. The right side appears to have a narrow but passable space.",
                 _steps("narrow_right", language)
             )
 
@@ -666,7 +666,7 @@ class NavigationEngine:
             return (
                 NavigationAction.VEER_LEFT, "left",
                 _speech("narrow_left", language, obs=obs, obs_cap=obs_cap, prox=prox),
-                f"Center path is blocked by {obs} {primary_proximity}. The left side has a narrow but passable space.",
+                f"Center path is blocked by {obs} {primary_proximity}. The left side appears to have a narrow but passable space.",
                 _steps("narrow_left", language)
             )
 
@@ -676,14 +676,14 @@ class NavigationEngine:
                 return (
                     NavigationAction.VEER_RIGHT, "right",
                     _speech("better_right", language, obs=obs, obs_cap=obs_cap, prox=prox),
-                    f"Center path is blocked by {obs} {primary_proximity}. The right corridor provides the best available clearance.",
+                    f"Center path is blocked by {obs} {primary_proximity}. The right corridor appears to provide the best available clearance.",
                     _steps("narrow_right", language)
                 )
             else:
                 return (
                     NavigationAction.VEER_LEFT, "left",
                     _speech("better_left", language, obs=obs, obs_cap=obs_cap, prox=prox),
-                    f"Center path is blocked by {obs} {primary_proximity}. The left corridor provides the best available clearance.",
+                    f"Center path is blocked by {obs} {primary_proximity}. The left corridor appears to provide the best available clearance.",
                     _steps("narrow_left", language)
                 )
 
