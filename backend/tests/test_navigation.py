@@ -71,7 +71,7 @@ class TestNavigationEngine:
         assert guidance.action == NavigationAction.STRAIGHT
         assert guidance.center_clear is True
         assert guidance.safe_corridor == "center"
-        assert "Path clear" in guidance.guidance_speech
+        assert "No obstacles detected" in guidance.guidance_speech
 
     def test_veer_right_when_center_blocked_by_chair(self):
         # Chair blocking center corridor (x1=380, x2=620)
@@ -168,4 +168,3 @@ class TestNavigationEngine:
         assert guidance.obstacle_explanation is not None
         assert "curtain" in guidance.obstacle_explanation.lower()
         assert len(guidance.next_steps) > 0
-
