@@ -16,11 +16,28 @@ export function useSpeech({ rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const isSpeakingRef = useRef(false);
   const lastTextRef = useRef("");
+  const generationRef = useRef(0);
+  const lastAutomaticKeyRef = useRef("");
+  const automaticHistoryRef = useRef(new Map());
   const synthRef = useRef(window.speechSynthesis);
 
   const speak = useCallback(
-    (text, { onEnd, priority = false } = {}) => {
-      if (!text || !text.trim()) return;
+    (text, { onEnd, priority = false, automatic = false, dedupeKey } = {}) => {
+      if (!text || !text.trim()) return false;
+      const key = dedupeKey || text.trim().toLowerCase().replace(/\s+/g, " ");
+      const now = Date.now();
+      const history = automaticHistoryRef.current;
+      const duplicateWindow = priority ? 0 : 30000;
+      if (automatic && !priority && lastAutomaticKeyRef.current === key) return false;
+      if (automatic && now - (history.get(key) ?? -Infinity) < duplicateWindow) return false;
+      // Automatic routine output never cuts off a sentence or a requested read.
+      if (automatic && !priority && isSpeakingRef.current) return false;
+      if (automatic) {
+        for (const [oldKey, time] of history) if (now - time > 60000) history.delete(oldKey);
+        history.set(key, now);
+        lastAutomaticKeyRef.current = key;
+      }
+      const generation = ++generationRef.current;
       const synth = synthRef.current;
 
       // Cancel any in-progress speech to avoid audio overlap
@@ -33,24 +50,30 @@ export function useSpeech({ rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) {
       utterance.lang = "en-US";
 
       utterance.onstart = () => {
+        if (generation !== generationRef.current) return;
         setIsSpeaking(true);
         isSpeakingRef.current = true;
       };
 
       utterance.onend = () => {
+        if (generation !== generationRef.current) return;
         setIsSpeaking(false);
         isSpeakingRef.current = false;
         if (onEnd) onEnd();
       };
 
       utterance.onerror = () => {
+        if (generation !== generationRef.current) return;
         setIsSpeaking(false);
         isSpeakingRef.current = false;
         if (onEnd) onEnd();
       };
 
       lastTextRef.current = text;
+      isSpeakingRef.current = true;
+      setIsSpeaking(true);
       synth.speak(utterance);
+      return true;
     },
     [rate, pitch, volume]
   );
@@ -64,6 +87,7 @@ export function useSpeech({ rate = 0.95, pitch = 1.0, volume = 1.0 } = {}) {
   }, []);
 
   const cancel = useCallback(() => {
+    generationRef.current += 1;
     synthRef.current.cancel();
     setIsSpeaking(false);
     isSpeakingRef.current = false;
