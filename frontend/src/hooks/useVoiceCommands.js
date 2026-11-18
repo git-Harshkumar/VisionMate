@@ -14,6 +14,7 @@ export function useVoiceCommands({
   onTargetSearch,
   onStopAudio,
   onRepeat,
+  onSpeakSteps,
   onFeedback,
 } = {}) {
   const [isListening, setIsListening] = useState(false);
@@ -41,6 +42,7 @@ export function useVoiceCommands({
     onTargetSearch,
     onStopAudio,
     onRepeat,
+    onSpeakSteps,
     onFeedback,
   });
   callbacksRef.current = {
@@ -49,6 +51,7 @@ export function useVoiceCommands({
     onTargetSearch,
     onStopAudio,
     onRepeat,
+    onSpeakSteps,
     onFeedback,
   };
 
@@ -128,7 +131,21 @@ export function useVoiceCommands({
       }
     }
 
-    // 5. Scene description / What's in front of me
+    // 5. Spoken next steps / "what do I do" - reads the current numbered
+    // guidance steps aloud on request (they otherwise stay on screen).
+    if (
+      lower.includes("steps") ||
+      lower.includes("what do i do") ||
+      lower.includes("what should i do") ||
+      lower.includes("how do i get around")
+    ) {
+      lastCommandTimeRef.current = now;
+      if (cbs.onFeedback) cbs.onFeedback("Speaking steps...");
+      if (cbs.onSpeakSteps) cbs.onSpeakSteps();
+      return;
+    }
+
+    // 6. Scene description / What's in front of me
     if (
       lower.includes("what's in front") ||
       lower.includes("what is in front") ||
