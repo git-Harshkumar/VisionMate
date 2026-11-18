@@ -95,3 +95,37 @@ def test_inspect_empty_json_returns_400():
     payload = {"image_base64": ""}
     response = client.post("/api/v1/inspect-json", json=payload)
     assert response.status_code == 400
+
+
+def test_slow_inspection_does_not_block_async_event_loop(monkeypatch):
+    """A slow CPU worker must leave the API loop free for other requests."""
+    import asyncio
+    import threading
+    from backend.app.routes import inspect as route
+    from backend.app.schemas.inspection import InspectionRequest
+
+    worker_started = threading.Event()
+    release_worker = threading.Event()
+
+    def slow_pipeline(**kwargs):
+        worker_started.set()
+        assert release_worker.wait(timeout=2), "The async loop did not release the worker"
+        return {"success": True}
+
+    monkeypatch.setattr(route, "_process_frame", slow_pipeline)
+    monkeypatch.setattr(route.ImageProcessor, "decode_from_base64", lambda _: np.zeros((8, 8, 3), dtype=np.uint8))
+
+    async def scenario():
+        task = asyncio.create_task(route.inspect_json_frame(InspectionRequest(image_base64="test")))
+        try:
+            for _ in range(100):
+                if worker_started.is_set():
+                    break
+                await asyncio.sleep(0.01)
+            assert worker_started.is_set()
+            assert not task.done(), "CPU inference blocked the event loop"
+        finally:
+            release_worker.set()
+        assert (await task)["success"]
+
+    asyncio.run(scenario())
