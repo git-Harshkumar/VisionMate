@@ -7,6 +7,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 export function useVoiceCommands({
   isEnabled = true,
+  isSpeaking = false,
+  spokenText = "",
   onSceneDescription,
   onReadText,
   onTargetSearch,
@@ -25,6 +27,12 @@ export function useVoiceCommands({
   const isExplicitlyStoppedRef = useRef(false);
   const restartTimerRef = useRef(null);
   const lastCommandTimeRef = useRef(0);
+  const speechStateRef = useRef({ isSpeaking, spokenText, changedAt: 0 });
+  useEffect(() => {
+    if (speechStateRef.current.isSpeaking !== isSpeaking) speechStateRef.current.changedAt = Date.now();
+    speechStateRef.current.isSpeaking = isSpeaking;
+    speechStateRef.current.spokenText = spokenText;
+  }, [isSpeaking, spokenText]);
 
   // Keep latest callbacks in ref
   const callbacksRef = useRef({
@@ -47,25 +55,27 @@ export function useVoiceCommands({
   const processCommand = useCallback((text) => {
     const lower = text.toLowerCase().trim();
     if (!lower) return;
+    const explicitStop = /^(?:visionmate[, ]+)?(?:stop|quiet|silence|shut up|pause|cancel)(?: (?:audio|speaking|talking))?[.!?]*$/.test(lower);
+    // Speakers can feed TTS back into the microphone. Accept deliberate stop
+    // commands, but never turn our own reading into another read/repeat request.
+    const state = speechStateRef.current;
+    const normalize = value => value.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+    const normalized = normalize(lower);
+    if (!explicitStop && (state.isSpeaking || Date.now() - state.changedAt < 600 ||
+        (normalized.length >= 8 && normalize(state.spokenText).includes(normalized)))) return;
 
     console.log("[Voice Command Recognized]:", lower);
 
     const now = Date.now();
     // 0.8s debounce between commands
-    if (now - lastCommandTimeRef.current < 800) {
+    if (!explicitStop && now - lastCommandTimeRef.current < 800) {
       return;
     }
 
     const cbs = callbacksRef.current;
 
     // 1. Stop / Quiet / Cancel
-    if (
-      lower.includes("stop") ||
-      lower.includes("quiet") ||
-      lower.includes("silence") ||
-      lower.includes("shut up") ||
-      lower.includes("pause")
-    ) {
+    if (explicitStop) {
       lastCommandTimeRef.current = now;
       if (cbs.onFeedback) cbs.onFeedback("Silenced");
       if (cbs.onStopAudio) cbs.onStopAudio();
@@ -175,7 +185,7 @@ export function useVoiceCommands({
         const res = event.results[i];
         const text = res[0].transcript;
         setTranscript(text);
-        processCommand(text);
+        if (res.isFinal) processCommand(text);
       }
     };
 
