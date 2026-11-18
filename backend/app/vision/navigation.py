@@ -262,8 +262,8 @@ _STEP_TEMPLATES: Dict[str, List[Tuple[str, str]]] = {
          "अपने ठीक सामने की जगह ध्यान से जाँचें।"),
         ("Check slowly to your right and left for an opening.",
          "दाईं और बाईं ओर धीरे-धीरे खुली जगह जाँचें।"),
-        ("If no side opens up, carefully move back and reassess.",
-         "अगर कोई ओर खुली न मिले, तो ध्यान से पीछे हटें और फिर से जाँचें।"),
+        ("If no side looks open, stay where you are and ask someone nearby for help.",
+         "अगर कोई ओर खुली न लगे, तो वहीं रुकें और पास के किसी व्यक्ति से मदद लें।"),
     ],
 }
 
@@ -567,7 +567,7 @@ class NavigationEngine:
                 return (
                     NavigationAction.STOP, "none",
                     _speech("urgent_stop", language, obs=obs, obs_cap=obs_cap),
-                    f"{obs_cap} is blocking your path at foot level, and neither the left nor right side is clear to pass.",
+                    f"{obs_cap} is blocking your path at foot level, and the camera cannot confirm a clear opening on either side.",
                     _steps("stop_recovery", language)
                 )
 
